@@ -1,12 +1,14 @@
 # lazyAppleMusic
+
 this is an Apple Music TUI.
-![preview](web/demo.png)
+![preview](asset/demo.png)
 
 ## model
+
 ```mermaid
 flowchart TD
-    Top --> Lists
-    Top --> Playing
+    Top --> playing
+    Top --> currentplaylist
 ```
 
 ## Thank this article help me build this project

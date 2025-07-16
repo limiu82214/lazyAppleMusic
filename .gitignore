@@ -1,1 +1,4 @@
 internal/sample.go
+
+build/*
+tmp/*

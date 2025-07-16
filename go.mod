@@ -2,7 +2,10 @@ module limiu82214/lazyAppleMusic
 
 go 1.24.5
 
-require github.com/charmbracelet/bubbletea v1.3.6
+require (
+	github.com/charmbracelet/bubbletea v1.3.6
+	github.com/davecgh/go-spew v1.1.1
+)
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

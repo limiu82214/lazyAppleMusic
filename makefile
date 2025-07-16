@@ -3,6 +3,7 @@
 
 run:
 	@while true; do \
+		clear; \
 		DEBUG=true go run ./cmd/main.go -process-tag "debug-lazy-apple-music-instance"; \
 		sleep 0.2; \
 	done

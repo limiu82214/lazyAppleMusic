@@ -6,7 +6,10 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/BigJk/imeji"
+
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type PlayerBridge interface {
@@ -21,6 +24,7 @@ type PlayerBridge interface {
 	PlayPlaylist(playlistName string) tea.Cmd
 	PlayTrackByName(trackName string) tea.Cmd
 
+	GetCurrentAlbum(width, height int) (string, error)
 	GetCurrentTrack() (string, error)
 	GetPlaylists() ([]string, error)
 	GetCurrentPlaylist() ([]string, error)
@@ -31,6 +35,7 @@ type appleMusicBridge struct {
 }
 
 func NewAppleMusicBridge(dump io.Writer) PlayerBridge {
+
 	return &appleMusicBridge{
 		appName: "Music",
 		dump:    dump,
@@ -39,7 +44,8 @@ func NewAppleMusicBridge(dump io.Writer) PlayerBridge {
 
 func (a *appleMusicBridge) log(msg interface{}) {
 	if a.dump != nil {
-		fmt.Fprintln(a.dump, msg)
+
+		spew.Fdump(a.dump, msg)
 	}
 }
 
@@ -222,4 +228,45 @@ func (a *appleMusicBridge) GetCurrentPlaylist() ([]string, error) {
 		}
 	}
 	return playlistNames, nil
+}
+
+// TODO: cache album img
+// TODO: check img exist
+func (a *appleMusicBridge) GetCurrentAlbum(width, height int) (string, error) {
+	width *= 2
+	filePath := "/tmp/cover.jpg"
+	cmd := exec.Command("osascript", "-e", fmt.Sprintf(`
+		set tmpPath to POSIX file "%s"
+		tell application "Music"
+			set aTrack to current track
+			set ac to count of artworks of aTrack
+			if ac = 0 then return "No Artwork"
+			set artData to data of artwork 1 of aTrack
+		end tell
+		set outFile to open for access tmpPath with write permission
+		try
+			set eof outFile to 0
+			write artData to outFile
+		end try
+		close access outFile
+		return POSIX path of tmpPath
+		EOF
+	`, filePath))
+
+	err := cmd.Run()
+	if err != nil {
+		spew.Fdump(a.dump, "Error getting current album artwork:", err)
+		return "", fmt.Errorf("error getting current album artwork: %v", err)
+	}
+
+	sizeOpt := imeji.WithResize(width, height)
+	text, err := imeji.FileString(
+		filePath,
+		sizeOpt,
+		imeji.WithTrueColor(), // 24-bit
+	)
+	if err != nil {
+		return "", fmt.Errorf("imeji: %w", err)
+	}
+	return text, nil
 }

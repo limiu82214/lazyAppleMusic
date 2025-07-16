@@ -1,10 +1,12 @@
 package model
 
 import (
+	"encoding/json"
 	"io"
 	"limiu82214/lazyAppleMusic/internal/bridge"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
@@ -44,8 +46,8 @@ func (m topModel) Init() tea.Cmd {
 // ======= UPDATE
 func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.dump != nil {
-		spew.Fdump(m.dump, "top")
-		spew.Fdump(m.dump, msg)
+		b, _ := json.Marshal(msg)
+		spew.Fdump(m.dump, "top"+string(b))
 	}
 
 	// var cmds []tea.Cmd
@@ -98,6 +100,10 @@ func (m topModel) View() string {
 	if err != nil {
 		trackName = err.Error()
 	}
+	currentAlbum, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
+	if err != nil {
+		currentAlbum = "Error fetching current album: " + err.Error()
+	}
 
 	leftHeight := m.height
 	borderSize := lipgloss.ASCIIBorder().GetLeftSize() + lipgloss.ASCIIBorder().GetRightSize()
@@ -106,7 +112,7 @@ func (m topModel) View() string {
 		Align(lipgloss.Center).
 		Width(width).
 		Border(lipgloss.RoundedBorder()).
-		Render("Playing: " + trackName)
+		Render(currentAlbum + "\nPlaying: " + trackName)
 	leftHeight -= lipgloss.Height(header)
 
 	footer := lipgloss.NewStyle().
@@ -115,13 +121,15 @@ func (m topModel) View() string {
 		Render("p: play/pause, s: pause, n: next, b: previous")
 	leftHeight -= lipgloss.Height(footer)
 
+	vp := viewport.New(width, leftHeight-lipgloss.ASCIIBorder().GetTopSize()-lipgloss.ASCIIBorder().GetBottomSize())
+	vp.SetContent(m.currentPlaylist.View())
 	content := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		Width(width).
-		Height(leftHeight - lipgloss.ASCIIBorder().GetTopSize() - lipgloss.ASCIIBorder().GetBottomSize()).
-		Render(m.currentPlaylist.View())
+		Render(vp.View())
 
 	leftHeight -= lipgloss.Height(content) + lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
+	// spew.Fprintln(m.dump, "height:", m.height, "header:", lipgloss.Height(header), "content:", lipgloss.Height(content), "footer:", lipgloss.Height(footer))
 
 	view := lipgloss.JoinVertical(
 		lipgloss.Top,

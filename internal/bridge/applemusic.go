@@ -3,7 +3,9 @@ package bridge
 import (
 	"fmt"
 	"io"
+	"limiu82214/lazyAppleMusic/internal/model"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/BigJk/imeji"
@@ -23,9 +25,10 @@ type PlayerBridge interface {
 	DecreaseVolume() tea.Cmd
 	PlayPlaylist(playlistName string) tea.Cmd
 	PlayTrackByName(trackName string) tea.Cmd
+	FavoriteTrack() tea.Cmd
 
 	GetCurrentAlbum(width, height int) (string, error)
-	GetCurrentTrack() (string, error)
+	GetCurrentTrack() (model.Track, error)
 	GetPlaylists() ([]string, error)
 	GetCurrentPlaylist() ([]string, error)
 }
@@ -49,23 +52,49 @@ func (a *appleMusicBridge) log(msg interface{}) {
 	}
 }
 
-func (a *appleMusicBridge) GetCurrentTrack() (string, error) {
-	cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s" to set trackName to name of current track`, a.appName))
+func (a *appleMusicBridge) GetCurrentTrack() (model.Track, error) {
+	nullTrack := model.Track{Name: "No Track Playing"}
+	// cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s" to set trackName to name of current track`, a.appName))
+	script := fmt.Sprintf(`
+	tell application "%s"
+		set ct to current track
+		set LAMname to name of ct
+		set LAMtime to time of ct
+		set LAMduration to duration of ct
+		set LAMplayedCount to played count of ct
+		set LAMfavorited to favorited of ct
+		set LAMartist to artist of ct
+		set LAMalbum to album of ct
+		set LAMalbumArtist to album artist of ct
+		set LAMlyrics to lyrics of ct
+		return LAMname & "##" & LAMtime & "##" & LAMduration & "##" & LAMplayedCount & "##" & LAMfavorited & "##" & LAMalbum & "##" & LAMalbumArtist & "##" & LAMartist & "##" & LAMlyrics
+	end tell
+	`, a.appName)
+	cmd := exec.Command("osascript", "-e", script)
 	output, err := cmd.Output()
 	if err != nil {
 		if err.Error() == "exit status 1" { // "Apple Music is not running"
-			return "not playing", nil
+			return nullTrack, nil
 		}
+		return nullTrack, fmt.Errorf("error getting current track: %v", err)
+	}
+	field := strings.Split(string(output), "##")
+	duration, _ := strconv.ParseFloat(field[2], 64)
+	playedCount, _ := strconv.Atoi(field[3])
 
-		a.log(fmt.Sprintf("Error getting current track: %v", err.Error()))
-		return "", err
+	track := model.Track{
+		Name:        field[0],
+		Time:        field[1],
+		Duration:    duration,
+		PlayedCount: playedCount,
+		Favorited:   field[4] == "true",
+		Album:       field[5],
+		AlbumArtist: field[6],
+		Artist:      field[7],
+		Lyrics:      field[8],
 	}
 
-	// Convert output to string and trim whitespace
-	trackName := string(output)
-	trackName = trackName[:len(trackName)-1] // Remove trailing newline
-
-	return trackName, nil
+	return track, nil
 }
 
 func (a *appleMusicBridge) PlayPause() tea.Cmd {
@@ -190,6 +219,24 @@ func (a *appleMusicBridge) PlayTrackByName(trackName string) tea.Cmd {
 		cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s" to play track "%s"`, a.appName, trackName))
 		if err := cmd.Run(); err != nil {
 			a.log(fmt.Sprintf("Error playing track '%s': %v", trackName, err.Error()))
+			return err
+		}
+		return nil
+	}
+}
+
+func (a *appleMusicBridge) FavoriteTrack() tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s"
+			set aTrack to current track
+			if favorited of aTrack then
+				set favorited of aTrack to false
+			else
+				set favorited of aTrack to true
+			end if
+		end tell`, a.appName))
+		if err := cmd.Run(); err != nil {
+			a.log(fmt.Sprintf("Error favoriting track: %v", err.Error()))
 			return err
 		}
 		return nil

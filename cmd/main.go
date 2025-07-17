@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"limiu82214/lazyAppleMusic/internal/model"
+	"limiu82214/lazyAppleMusic/internal/tui"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,7 +19,7 @@ func main() {
 	}
 
 	//p := tea.NewProgram(internal.InitialModel(dump))
-	p := tea.NewProgram(model.InitialTopModel(dump))
+	p := tea.NewProgram(tui.InitialTopModel(dump))
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)

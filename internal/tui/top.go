@@ -1,4 +1,4 @@
-package model
+package tui
 
 import (
 	"encoding/json"
@@ -75,6 +75,8 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.appleMusic.IncreaseVolume()
 		case "d":
 			return m, m.appleMusic.DecreaseVolume()
+		case "f":
+			return m, m.appleMusic.FavoriteTrack()
 
 			// // old
 			// case "up", "k":
@@ -101,10 +103,18 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // ======= VIEW
 
 func (m topModel) View() string {
-	trackName, err := m.appleMusic.GetCurrentTrack()
+	track, err := m.appleMusic.GetCurrentTrack()
 	if err != nil {
-		trackName = err.Error()
+		track.Name = err.Error()
 	}
+	trackString := track.Name + " - " + track.Artist
+	if track.Favorited {
+		trackString += " (󰋑) "
+	} else {
+		trackString += " () "
+	}
+	trackString += track.Time
+
 	// TODO: don't generate cover every time
 	currentAlbum, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
 	if err != nil {
@@ -118,13 +128,13 @@ func (m topModel) View() string {
 		Align(lipgloss.Center).
 		Width(width).
 		Border(lipgloss.RoundedBorder()).
-		Render(currentAlbum + "\nPlaying: " + trackName)
+		Render(currentAlbum + "\n" + trackString)
 	leftHeight -= lipgloss.Height(header)
 
 	footer := lipgloss.NewStyle().
 		Align(lipgloss.Center).
 		Width(width).
-		Render("p: play/pause, s: pause, n: next, b: previous, u: volume up, d: volume down, q: quit")
+		Render("p: play/pause, s: pause, n: next, b: previous, u: volume up, d: volume down, f: favorite, q: quit")
 	leftHeight -= lipgloss.Height(footer)
 
 	vp := viewport.New(width, leftHeight-lipgloss.ASCIIBorder().GetTopSize()-lipgloss.ASCIIBorder().GetBottomSize())

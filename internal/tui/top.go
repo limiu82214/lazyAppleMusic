@@ -9,6 +9,7 @@ import (
 
 	"limiu82214/lazyAppleMusic/internal/constant"
 
+	"github.com/charmbracelet/bubbles/timer"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -19,8 +20,9 @@ import (
 type errorMsg struct{ err error }
 
 type topData struct {
-	CurrentTrack model.Track
-	CurrentAlbum string
+	CurrentTrack   model.Track
+	PlayerPosition int
+	CurrentAlbum   string
 }
 type topModel struct {
 	dump            io.Writer
@@ -33,20 +35,22 @@ type topModel struct {
 	currentPlaylist currentPlaylistModel
 	vpOfContent     viewport.Model
 
-	data topData
+	playingTrackTimer timer.Model
+	data              topData
 }
 
 // ======= INITIAL
 func InitialTopModel(dump io.Writer) topModel {
 	appleMusic := bridge.NewAppleMusicBridge(dump)
 	return topModel{
-		dump:            dump,
-		appleMusic:      appleMusic,
-		choices:         []string{"Playing"},
-		selected:        make(map[int]struct{}),
-		currentPlaylist: newCurrentPlaylistModel(dump, appleMusic),
-		vpOfContent:     viewport.New(0, 0),
-		data:            topData{},
+		dump:              dump,
+		appleMusic:        appleMusic,
+		choices:           []string{"Playing"},
+		selected:          make(map[int]struct{}),
+		currentPlaylist:   newCurrentPlaylistModel(dump, appleMusic),
+		vpOfContent:       viewport.New(0, 0),
+		playingTrackTimer: timer.NewWithInterval(0, time.Second),
+		data:              topData{},
 	}
 }
 
@@ -59,7 +63,9 @@ func doTick() tea.Cmd {
 func (m topModel) Init() tea.Cmd {
 	m.fetchData()
 	m.reSize()
-	return doTick()
+	return tea.Batch(
+		doTick(),
+	)
 }
 
 // ======= UPDATE
@@ -73,10 +79,25 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
+	case timer.TimeoutMsg:
+		spew.Fdump(m.dump, "TimeoutMsg:", msg)
+		switch msg.ID {
+		case m.playingTrackTimer.ID():
+			return m, nil
+		}
+	case timer.TickMsg:
+		spew.Fdump(m.dump, "TickMsg:", msg)
+		switch msg.ID {
+		case m.playingTrackTimer.ID():
+			var cmd tea.Cmd
+			m.playingTrackTimer, cmd = m.playingTrackTimer.Update(msg)
+			return m, cmd
+		}
 	case constant.TickMsg:
-		m.fetchData()
+		cmds := m.fetchData()
 		m.reSize()
-		return m, doTick()
+		cmds = append(cmds, doTick())
+		return m, tea.Batch(cmds...)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -84,9 +105,8 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reSize()
 
 	case constant.EventTrackChanged:
-		m.data.CurrentTrack, _ = m.appleMusic.GetCurrentTrack()
-		m.data.CurrentAlbum, _ = m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
-		return m, nil
+		cmds := m.fetchData()
+		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -99,7 +119,7 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "b":
 			return m, m.appleMusic.PreviousTrack()
 		case "s":
-			return m, m.appleMusic.Pause()
+			return m, tea.Batch(m.playingTrackTimer.Stop(), m.appleMusic.Pause())
 		case "u":
 			return m, m.appleMusic.IncreaseVolume()
 		case "d":
@@ -107,9 +127,9 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "f":
 			return m, m.appleMusic.FavoriteTrack()
 		case "r":
-			m.fetchData()
+			cmds := m.fetchData()
 			m.reSize()
-			return m, nil
+			return m, tea.Batch(cmds...)
 		case "k":
 			m.vpOfContent.ScrollUp(1)
 			return m, nil
@@ -145,7 +165,9 @@ func (m topModel) View() string {
 	return m.reSize()
 }
 
-func (m *topModel) fetchData() {
+func (m *topModel) fetchData() []tea.Cmd {
+	cmds := []tea.Cmd{}
+	// track
 	oldTrckId := m.data.CurrentTrack.Id
 	track, err := m.appleMusic.GetCurrentTrack()
 	if err != nil {
@@ -153,16 +175,30 @@ func (m *topModel) fetchData() {
 	}
 	m.data.CurrentTrack = track
 
+	// other
 	if oldTrckId != m.data.CurrentTrack.Id {
+		// playingTrackTimer
+		m.data.PlayerPosition, err = m.appleMusic.GetPlayerPosition()
+		if err != nil {
+			spew.Fdump(m.dump, "Error fetching player position:", err)
+			m.data.PlayerPosition = 0
+		}
+		m.playingTrackTimer = timer.NewWithInterval(time.Duration(int(m.data.CurrentTrack.Duration)-m.data.PlayerPosition)*time.Second, time.Second)
+		cmds = append(cmds, m.playingTrackTimer.Init())
+
+		// currentAlbum
 		currentAlbum, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
 		if err != nil {
 			currentAlbum = "Error fetching current album: " + err.Error()
 		}
 		m.data.CurrentAlbum = currentAlbum
-		m.currentPlaylist.fetch()
+
+		// currentPlaylist
+		m.currentPlaylist.fetch() // TODO: consider goroutine because it is slow, make sure using mutex prevent concurrent access
 		m.vpOfContent.SetContent(m.currentPlaylist.View())
 	}
 
+	return cmds
 }
 func (m *topModel) reSize() string {
 	// 整理資料
@@ -172,6 +208,7 @@ func (m *topModel) reSize() string {
 	} else {
 		trackString += " (" + constant.Unfavorite + ") "
 	}
+	trackString += " " + m.playingTrackTimer.Timeout.Abs().String() + " / "
 	trackString += m.data.CurrentTrack.Time
 
 	leftHeight := m.height

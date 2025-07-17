@@ -30,6 +30,7 @@ type PlayerBridge interface {
 	PlayTrackByName(trackName string) tea.Cmd
 	FavoriteTrack() tea.Cmd
 
+	GetPlayerPosition() (int, error)
 	GetCurrentAlbum(width, height int) (string, error)
 	GetCurrentTrack() (model.Track, error)
 	GetPlaylists() ([]string, error)
@@ -308,6 +309,27 @@ func (a *appleMusicBridge) GetCurrentPlaylist() (model.Playlist, error) {
 	}
 
 	return playlist, nil
+}
+
+func (a *appleMusicBridge) GetPlayerPosition() (int, error) {
+	cmd := exec.Command("osascript", "-e", fmt.Sprintf(`
+		tell application "%s"
+			set playerPosition to player position
+		end tell
+		return playerPosition
+	`, a.appName))
+
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, fmt.Errorf("error getting player position: %v", err)
+	}
+
+	position, err := strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing player position: %v", err)
+	}
+
+	return int(position), nil
 }
 
 // TODO: cache album img

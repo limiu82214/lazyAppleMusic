@@ -1,10 +1,10 @@
 package tui
 
 import (
-	"encoding/json"
 	"io"
 	"limiu82214/lazyAppleMusic/internal/bridge"
 	"limiu82214/lazyAppleMusic/internal/model"
+	"limiu82214/lazyAppleMusic/internal/util"
 	"time"
 
 	"limiu82214/lazyAppleMusic/internal/constant"
@@ -70,23 +70,16 @@ func (m topModel) Init() tea.Cmd {
 
 // ======= UPDATE
 func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.dump != nil {
-		b, _ := json.Marshal(msg)
-		spew.Fdump(m.dump, "top"+string(b))
-	}
-
-	// var cmds []tea.Cmd
-
 	switch msg := msg.(type) {
 
 	case timer.TimeoutMsg:
-		spew.Fdump(m.dump, "TimeoutMsg:", msg)
+		spew.Fprintln(m.dump, "Top TimeoutMsg:", util.JsonMarshalWhatever(msg))
 		switch msg.ID {
 		case m.playingTrackTimer.ID():
 			return m, nil
 		}
 	case timer.TickMsg:
-		spew.Fdump(m.dump, "TickMsg:", msg)
+		spew.Fprintln(m.dump, "Top TickMsg:", util.JsonMarshalWhatever(msg))
 		switch msg.ID {
 		case m.playingTrackTimer.ID():
 			var cmd tea.Cmd
@@ -94,21 +87,25 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case constant.TickMsg:
+		spew.Fprintln(m.dump, "Top constant.TickMsg:", util.JsonMarshalWhatever(msg))
 		cmds := m.fetchData()
 		m.reSize()
 		cmds = append(cmds, doTick())
 		return m, tea.Batch(cmds...)
 
 	case tea.WindowSizeMsg:
+		spew.Fprintln(m.dump, "Top WindowSizeMsg:", util.JsonMarshalWhatever(msg))
 		m.width = msg.Width
 		m.height = msg.Height
 		m.reSize()
 
 	case constant.EventTrackChanged:
+		spew.Fprintln(m.dump, "Top EventTrackChanged:", util.JsonMarshalWhatever(msg))
 		cmds := m.fetchData()
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
+		spew.Fprintln(m.dump, "Top KeyMsg:", util.JsonMarshalWhatever(msg))
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -154,6 +151,8 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// 		m.selected[m.cursor] = struct{}{}
 			// 	}
 		}
+	default:
+		spew.Fprintln(m.dump, "Top unknown case:", util.JsonMarshalWhatever(msg))
 	}
 
 	return m, nil

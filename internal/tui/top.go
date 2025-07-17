@@ -17,7 +17,6 @@ import (
 
 // 新增錯誤和計時訊息的類型定義
 type errorMsg struct{ err error }
-type tickMsg time.Time
 
 type topData struct {
 	CurrentTrack model.Track
@@ -51,9 +50,16 @@ func InitialTopModel(dump io.Writer) topModel {
 	}
 }
 
+func doTick() tea.Cmd {
+	return tea.Tick(time.Second*5, func(t time.Time) tea.Msg {
+		return constant.TickMsg(t)
+	})
+}
+
 func (m topModel) Init() tea.Cmd {
-	// TODO: auto refresh cover and playing info
-	return nil
+	m.fetchData()
+	m.reSize()
+	return doTick()
 }
 
 // ======= UPDATE
@@ -66,6 +72,11 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+
+	case constant.TickMsg:
+		m.fetchData()
+		m.reSize()
+		return m, doTick()
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -132,17 +143,20 @@ func (m topModel) View() string {
 }
 
 func (m *topModel) fetchData() {
+	oldTrckId := m.data.CurrentTrack.Id
 	track, err := m.appleMusic.GetCurrentTrack()
 	if err != nil {
 		track.Name = err.Error()
 	}
 	m.data.CurrentTrack = track
 
-	currentAlbum, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
-	if err != nil {
-		currentAlbum = "Error fetching current album: " + err.Error()
+	if oldTrckId != m.data.CurrentTrack.Id {
+		currentAlbum, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
+		if err != nil {
+			currentAlbum = "Error fetching current album: " + err.Error()
+		}
+		m.data.CurrentAlbum = currentAlbum
 	}
-	m.data.CurrentAlbum = currentAlbum
 
 	m.currentPlaylist.fetch()
 	m.vpOfContent.SetContent(m.currentPlaylist.View())

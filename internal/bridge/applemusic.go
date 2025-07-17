@@ -70,6 +70,7 @@ func (a *appleMusicBridge) appleTrackRecordMap2Track(m map[string]string) model.
 	playedCount, _ := strconv.Atoi(m["played count"])
 
 	track := model.Track{
+		Id:          m["id"],
 		Name:        m["name"],
 		Time:        m["time"],
 		Duration:    duration,

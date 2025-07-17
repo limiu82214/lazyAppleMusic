@@ -1,6 +1,7 @@
 package model
 
 type Track struct {
+	Id          string
 	Name        string
 	Time        string
 	Duration    float64

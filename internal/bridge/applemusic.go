@@ -276,6 +276,7 @@ func (a *appleMusicBridge) GetPlaylists() ([]string, error) {
 	return playlistNames, nil
 }
 
+// FIXME: if is big list, it will be slow
 func (a *appleMusicBridge) GetCurrentPlaylist() (model.Playlist, error) {
 	cmd := exec.Command("osascript", "-e", fmt.Sprintf(`
 	tell application "%s"

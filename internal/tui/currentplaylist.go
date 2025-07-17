@@ -3,10 +3,10 @@ package tui
 import (
 	"io"
 	"limiu82214/lazyAppleMusic/internal/bridge"
+	"limiu82214/lazyAppleMusic/internal/constant"
 
 	// "limiu82214/lazyAppleMusic/internal/bridge"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
 )
 
@@ -57,13 +57,18 @@ func (m *currentPlaylistModel) SetSize(width, height int) {
 func (m currentPlaylistModel) View() string {
 	currentPlaylist, err := m.appleMusic.GetCurrentPlaylist()
 	if err != nil {
-		currentPlaylist = []string{"Error fetching current playlist: " + err.Error()}
+		spew.Fdump(m.dump, "Error fetching current playlist:", err)
+	}
+	viewStr := ""
+	for _, track := range currentPlaylist.Tracks {
+		if track.Favorited {
+			viewStr += "(" + constant.Favorite + ") "
+		} else {
+			viewStr += "(" + constant.Unfavorite + ") "
+		}
+		viewStr += track.Name + " - " + track.Artist
+		viewStr += "\n"
 	}
 
-	view := lipgloss.NewStyle().
-		MaxHeight(m.height).
-		MaxWidth(m.width).
-		Render("Current Playlist:\n" + lipgloss.JoinVertical(lipgloss.Top, currentPlaylist...))
-
-	return view
+	return viewStr
 }

@@ -6,6 +6,8 @@ import (
 	"limiu82214/lazyAppleMusic/internal/bridge"
 	"time"
 
+	"limiu82214/lazyAppleMusic/internal/constant"
+
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -109,9 +111,9 @@ func (m topModel) View() string {
 	}
 	trackString := track.Name + " - " + track.Artist
 	if track.Favorited {
-		trackString += " (󰋑) "
+		trackString += " (" + constant.Favorite + ") "
 	} else {
-		trackString += " () "
+		trackString += " (" + constant.Unfavorite + ") "
 	}
 	trackString += track.Time
 

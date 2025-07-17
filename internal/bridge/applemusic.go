@@ -5,6 +5,7 @@ import (
 	"io"
 	"limiu82214/lazyAppleMusic/internal/model"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -30,7 +31,7 @@ type PlayerBridge interface {
 	GetCurrentAlbum(width, height int) (string, error)
 	GetCurrentTrack() (model.Track, error)
 	GetPlaylists() ([]string, error)
-	GetCurrentPlaylist() ([]string, error)
+	GetCurrentPlaylist() (model.Playlist, error)
 }
 type appleMusicBridge struct {
 	appName string
@@ -52,23 +53,44 @@ func (a *appleMusicBridge) log(msg interface{}) {
 	}
 }
 
+func (a *appleMusicBridge) parseAppleRecord(input string) map[string]string {
+	re := regexp.MustCompile(`(\w[\w ]*?):\s*([^,]*?)\s*(?:,|$)`)
+	matches := re.FindAllStringSubmatch(input, -1)
+
+	result := make(map[string]string)
+	for _, m := range matches {
+		key := strings.TrimSpace(m[1])
+		val := strings.TrimSpace(m[2])
+		result[key] = val
+	}
+	return result
+}
+func (a *appleMusicBridge) appleTrackRecordMap2Track(m map[string]string) model.Track {
+	duration, _ := strconv.ParseFloat(m["duration"], 64)
+	playedCount, _ := strconv.Atoi(m["played count"])
+
+	track := model.Track{
+		Name:        m["name"],
+		Time:        m["time"],
+		Duration:    duration,
+		PlayedCount: playedCount,
+		Favorited:   m["favorited"] == "true",
+		Album:       m["album"],
+		AlbumArtist: m["album artist"],
+		Artist:      m["artist"],
+		Lyrics:      m["lyrics"],
+	}
+	return track
+}
+
 func (a *appleMusicBridge) GetCurrentTrack() (model.Track, error) {
 	nullTrack := model.Track{Name: "No Track Playing"}
-	// cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s" to set trackName to name of current track`, a.appName))
 	script := fmt.Sprintf(`
-	tell application "%s"
-		set ct to current track
-		set LAMname to name of ct
-		set LAMtime to time of ct
-		set LAMduration to duration of ct
-		set LAMplayedCount to played count of ct
-		set LAMfavorited to favorited of ct
-		set LAMartist to artist of ct
-		set LAMalbum to album of ct
-		set LAMalbumArtist to album artist of ct
-		set LAMlyrics to lyrics of ct
-		return LAMname & "##" & LAMtime & "##" & LAMduration & "##" & LAMplayedCount & "##" & LAMfavorited & "##" & LAMalbum & "##" & LAMalbumArtist & "##" & LAMartist & "##" & LAMlyrics
-	end tell
+		tell application "%s"
+			set output to {}
+			set end of output to properties of current track
+		end tell
+		return output
 	`, a.appName)
 	cmd := exec.Command("osascript", "-e", script)
 	output, err := cmd.Output()
@@ -78,21 +100,8 @@ func (a *appleMusicBridge) GetCurrentTrack() (model.Track, error) {
 		}
 		return nullTrack, fmt.Errorf("error getting current track: %v", err)
 	}
-	field := strings.Split(string(output), "##")
-	duration, _ := strconv.ParseFloat(field[2], 64)
-	playedCount, _ := strconv.Atoi(field[3])
 
-	track := model.Track{
-		Name:        field[0],
-		Time:        field[1],
-		Duration:    duration,
-		PlayedCount: playedCount,
-		Favorited:   field[4] == "true",
-		Album:       field[5],
-		AlbumArtist: field[6],
-		Artist:      field[7],
-		Lyrics:      field[8],
-	}
+	track := a.appleTrackRecordMap2Track(a.parseAppleRecord(string(output)))
 
 	return track, nil
 }
@@ -262,31 +271,34 @@ func (a *appleMusicBridge) GetPlaylists() ([]string, error) {
 	return playlistNames, nil
 }
 
-func (a *appleMusicBridge) GetCurrentPlaylist() ([]string, error) {
+func (a *appleMusicBridge) GetCurrentPlaylist() (model.Playlist, error) {
 	cmd := exec.Command("osascript", "-e", fmt.Sprintf(`
 	tell application "%s"
 		set currentList to current playlist
 		set output to {}
 		repeat with t in tracks of currentList
-			set end of output to (name of t & " - " & artist of t)
+			set end of output to properties of t
+			set end of output to "######"
 		end repeat
 	end tell
 	return output
 	`, a.appName))
+
+	// set end of output to (name of t & " - " & artist of t)
 	output, err := cmd.Output()
 	if err != nil {
-		return []string{}, fmt.Errorf("error getting current playlist: %v", err)
+		return model.Playlist{}, fmt.Errorf("error getting current playlist: %v", err)
 	}
 
-	// Convert output to string and split by comma
-	playlist := strings.Split(string(output), ", ")
-	playlistNames := []string{}
-	for _, name := range playlist {
-		if strings.TrimSpace(name) != "" {
-			playlistNames = append(playlistNames, strings.TrimSpace(name))
-		}
+	trackStrList := strings.Split(string(output), "######")
+	playlist := model.Playlist{}
+	for _, trackStr := range trackStrList {
+		playlist.Tracks = append(playlist.Tracks,
+			a.appleTrackRecordMap2Track(a.parseAppleRecord(trackStr)),
+		)
 	}
-	return playlistNames, nil
+
+	return playlist, nil
 }
 
 // TODO: cache album img

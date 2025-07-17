@@ -40,6 +40,7 @@ func InitialTopModel(dump io.Writer) topModel {
 }
 
 func (m topModel) Init() tea.Cmd {
+	// TODO: auto refresh cover and playing info
 	return nil
 }
 
@@ -70,6 +71,10 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.appleMusic.PreviousTrack()
 		case "s":
 			return m, m.appleMusic.Pause()
+		case "u":
+			return m, m.appleMusic.IncreaseVolume()
+		case "d":
+			return m, m.appleMusic.DecreaseVolume()
 
 			// // old
 			// case "up", "k":
@@ -100,6 +105,7 @@ func (m topModel) View() string {
 	if err != nil {
 		trackName = err.Error()
 	}
+	// TODO: don't generate cover every time
 	currentAlbum, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
 	if err != nil {
 		currentAlbum = "Error fetching current album: " + err.Error()
@@ -118,7 +124,7 @@ func (m topModel) View() string {
 	footer := lipgloss.NewStyle().
 		Align(lipgloss.Center).
 		Width(width).
-		Render("p: play/pause, s: pause, n: next, b: previous")
+		Render("p: play/pause, s: pause, n: next, b: previous, u: volume up, d: volume down, q: quit")
 	leftHeight -= lipgloss.Height(footer)
 
 	vp := viewport.New(width, leftHeight-lipgloss.ASCIIBorder().GetTopSize()-lipgloss.ASCIIBorder().GetBottomSize())

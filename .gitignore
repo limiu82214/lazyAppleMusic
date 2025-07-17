@@ -2,3 +2,4 @@ internal/sample.go
 
 build/*
 tmp/*
+.DS_Store

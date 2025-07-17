@@ -140,8 +140,14 @@ func (a *appleMusicBridge) SetVolume(volume int) tea.Cmd {
 
 func (a *appleMusicBridge) IncreaseVolume() tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s" to set currentVolume to sound volume`, a.appName),
-			"-e", `set sound volume to (currentVolume + 10)`)
+		script := fmt.Sprintf(`
+		tell application "%s"
+			set currentVolume to sound volume
+			set sound volume to (currentVolume + 10)
+		end tell
+		`, a.appName)
+		cmd := exec.Command("osascript", "-e", script)
+
 		if err := cmd.Run(); err != nil {
 			a.log(fmt.Sprintf("Error increasing volume: %v", err.Error()))
 			return err
@@ -152,8 +158,14 @@ func (a *appleMusicBridge) IncreaseVolume() tea.Cmd {
 
 func (a *appleMusicBridge) DecreaseVolume() tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s" to set currentVolume to sound volume`, a.appName),
-			"-e", `set sound volume to (currentVolume - 10)`)
+		script := fmt.Sprintf(`
+		tell application "%s"
+			set currentVolume to sound volume
+			set sound volume to (currentVolume - 10)
+		end tell
+		`, a.appName)
+		cmd := exec.Command("osascript", "-e", script)
+
 		if err := cmd.Run(); err != nil {
 			a.log(fmt.Sprintf("Error decreasing volume: %v", err.Error()))
 			return err
@@ -204,8 +216,8 @@ func (a *appleMusicBridge) GetPlaylists() ([]string, error) {
 }
 
 func (a *appleMusicBridge) GetCurrentPlaylist() ([]string, error) {
-	cmd := exec.Command("osascript", "-e", `
-	tell application "Music"
+	cmd := exec.Command("osascript", "-e", fmt.Sprintf(`
+	tell application "%s"
 		set currentList to current playlist
 		set output to {}
 		repeat with t in tracks of currentList
@@ -213,7 +225,7 @@ func (a *appleMusicBridge) GetCurrentPlaylist() ([]string, error) {
 		end repeat
 	end tell
 	return output
-	`)
+	`, a.appName))
 	output, err := cmd.Output()
 	if err != nil {
 		return []string{}, fmt.Errorf("error getting current playlist: %v", err)
@@ -237,7 +249,7 @@ func (a *appleMusicBridge) GetCurrentAlbum(width, height int) (string, error) {
 	filePath := "/tmp/cover.jpg"
 	cmd := exec.Command("osascript", "-e", fmt.Sprintf(`
 		set tmpPath to POSIX file "%s"
-		tell application "Music"
+		tell application "%s"
 			set aTrack to current track
 			set ac to count of artworks of aTrack
 			if ac = 0 then return "No Artwork"
@@ -251,7 +263,7 @@ func (a *appleMusicBridge) GetCurrentAlbum(width, height int) (string, error) {
 		close access outFile
 		return POSIX path of tmpPath
 		EOF
-	`, filePath))
+	`, filePath, a.appName))
 
 	err := cmd.Run()
 	if err != nil {

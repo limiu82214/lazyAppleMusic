@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"limiu82214/lazyAppleMusic/internal/bridge"
+	"limiu82214/lazyAppleMusic/internal/model"
 	"time"
 
 	"limiu82214/lazyAppleMusic/internal/constant"
@@ -18,6 +19,10 @@ import (
 type errorMsg struct{ err error }
 type tickMsg time.Time
 
+type topData struct {
+	CurrentTrack model.Track
+	CurrentAlbum string
+}
 type topModel struct {
 	dump            io.Writer
 	appleMusic      bridge.PlayerBridge
@@ -27,6 +32,9 @@ type topModel struct {
 	width           int
 	height          int
 	currentPlaylist currentPlaylistModel
+	vpOfContent     viewport.Model
+
+	data topData
 }
 
 // ======= INITIAL
@@ -38,6 +46,8 @@ func InitialTopModel(dump io.Writer) topModel {
 		choices:         []string{"Playing"},
 		selected:        make(map[int]struct{}),
 		currentPlaylist: newCurrentPlaylistModel(dump, appleMusic),
+		vpOfContent:     viewport.New(0, 0),
+		data:            topData{},
 	}
 }
 
@@ -60,6 +70,9 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.reSize()
+		// m.vpOfContent.Width = 0
+		// m.vpOfContent.Height = 0
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -79,6 +92,16 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.appleMusic.DecreaseVolume()
 		case "f":
 			return m, m.appleMusic.FavoriteTrack()
+		case "r":
+			m.fetchData()
+			m.reSize()
+			return m, nil
+		case "k":
+			m.vpOfContent.ScrollUp(1)
+			return m, nil
+		case "j":
+			m.vpOfContent.ScrollDown(1)
+			return m, nil
 
 			// // old
 			// case "up", "k":
@@ -105,48 +128,63 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // ======= VIEW
 
 func (m topModel) View() string {
+	return m.reSize()
+}
+
+func (m *topModel) fetchData() {
 	track, err := m.appleMusic.GetCurrentTrack()
 	if err != nil {
 		track.Name = err.Error()
 	}
-	trackString := track.Name + " - " + track.Artist
-	if track.Favorited {
-		trackString += " (" + constant.Favorite + ") "
-	} else {
-		trackString += " (" + constant.Unfavorite + ") "
-	}
-	trackString += track.Time
+	m.data.CurrentTrack = track
 
-	// TODO: don't generate cover every time
 	currentAlbum, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
 	if err != nil {
 		currentAlbum = "Error fetching current album: " + err.Error()
 	}
+	m.data.CurrentAlbum = currentAlbum
+
+	m.currentPlaylist.fetch()
+	m.vpOfContent.SetContent(m.currentPlaylist.View())
+}
+func (m *topModel) reSize() string {
+	// 整理資料
+	trackString := m.data.CurrentTrack.Name + " - " + m.data.CurrentTrack.Artist
+	if m.data.CurrentTrack.Favorited {
+		trackString += " (" + constant.Favorite + ") "
+	} else {
+		trackString += " (" + constant.Unfavorite + ") "
+	}
+	trackString += m.data.CurrentTrack.Time
 
 	leftHeight := m.height
 	borderSize := lipgloss.ASCIIBorder().GetLeftSize() + lipgloss.ASCIIBorder().GetRightSize()
 	width := m.width - borderSize
+
+	// header
 	header := lipgloss.NewStyle().
 		Align(lipgloss.Center).
 		Width(width).
 		Border(lipgloss.RoundedBorder()).
-		Render(currentAlbum + "\n" + trackString)
+		Render(m.data.CurrentAlbum + "\n" + trackString)
 	leftHeight -= lipgloss.Height(header)
 
+	// footer
 	footer := lipgloss.NewStyle().
 		Align(lipgloss.Center).
 		Width(width).
-		Render("p: play/pause, s: pause, n: next, b: previous, u: volume up, d: volume down, f: favorite, q: quit")
+		Render("p: play/pause, s: pause, n: next, b: previous, u: volume up, d: volume down, f: favorite, r: refresh, q: quit")
 	leftHeight -= lipgloss.Height(footer)
 
-	vp := viewport.New(width, leftHeight-lipgloss.ASCIIBorder().GetTopSize()-lipgloss.ASCIIBorder().GetBottomSize())
-	vp.SetContent(m.currentPlaylist.View())
-	content := lipgloss.NewStyle().
+	// content
+	m.vpOfContent.Width = width
+	m.vpOfContent.Height = leftHeight
+	m.vpOfContent.Style = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		Width(width).
-		Render(vp.View())
+		Width(m.width)
+	content := m.vpOfContent.View()
 
-	leftHeight -= lipgloss.Height(content) + lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
+	// leftHeight -= lipgloss.Height(content) + lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
 	// spew.Fprintln(m.dump, "height:", m.height, "header:", lipgloss.Height(header), "content:", lipgloss.Height(content), "footer:", lipgloss.Height(footer))
 
 	view := lipgloss.JoinVertical(

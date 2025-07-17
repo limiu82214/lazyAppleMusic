@@ -291,6 +291,9 @@ func (a *appleMusicBridge) GetCurrentPlaylist() (model.Playlist, error) {
 	}
 
 	trackStrList := strings.Split(string(output), "######")
+	if len(trackStrList) > 0 {
+		trackStrList = trackStrList[:len(trackStrList)-1] // Remove the last empty string if it exists
+	}
 	playlist := model.Playlist{}
 	for _, trackStr := range trackStrList {
 		playlist.Tracks = append(playlist.Tracks,

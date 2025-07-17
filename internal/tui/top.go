@@ -159,10 +159,10 @@ func (m *topModel) fetchData() {
 			currentAlbum = "Error fetching current album: " + err.Error()
 		}
 		m.data.CurrentAlbum = currentAlbum
+		m.currentPlaylist.fetch()
+		m.vpOfContent.SetContent(m.currentPlaylist.View())
 	}
 
-	m.currentPlaylist.fetch()
-	m.vpOfContent.SetContent(m.currentPlaylist.View())
 }
 func (m *topModel) reSize() string {
 	// 整理資料

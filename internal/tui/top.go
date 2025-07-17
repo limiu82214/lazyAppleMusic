@@ -82,8 +82,10 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.reSize()
-		// m.vpOfContent.Width = 0
-		// m.vpOfContent.Height = 0
+
+	case constant.EventTrackChanged:
+		m.data.CurrentAlbum, _ = m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
+		return m, nil
 
 	case tea.KeyMsg:
 		switch msg.String() {

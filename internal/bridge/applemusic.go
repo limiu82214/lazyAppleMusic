@@ -3,7 +3,9 @@ package bridge
 import (
 	"fmt"
 	"io"
+	"limiu82214/lazyAppleMusic/internal/constant"
 	"limiu82214/lazyAppleMusic/internal/model"
+
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -147,7 +149,8 @@ func (a *appleMusicBridge) NextTrack() tea.Cmd {
 			a.log(fmt.Sprintf("Error skipping to next track: %v", err.Error()))
 			return err
 		}
-		return nil
+
+		return constant.EventTrackChanged{}
 	}
 }
 
@@ -158,7 +161,8 @@ func (a *appleMusicBridge) PreviousTrack() tea.Cmd {
 			a.log(fmt.Sprintf("Error skipping to previous track: %v", err.Error()))
 			return err
 		}
-		return nil
+
+		return constant.EventTrackChanged{}
 	}
 }
 

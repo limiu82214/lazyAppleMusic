@@ -7,8 +7,9 @@ this is an Apple Music TUI.
 
 ```mermaid
 flowchart TD
-    Top --> playing
-    Top --> currentplaylist
+    Top --> playingTui
+    Top --> currentplaylistTui
+    Top --> helpTui
 ```
 
 ## Thank this article help me build this project

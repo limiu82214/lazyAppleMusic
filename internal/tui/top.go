@@ -33,6 +33,7 @@ type topTui struct {
 	vpOfContent        viewport.Model
 
 	playingTui PlayingTui
+	helpTui    HelpTui
 	data       topData
 }
 
@@ -46,6 +47,7 @@ func InitialTopTui(dump io.Writer) topTui {
 		vpOfContent:        viewport.New(0, 0),
 		currentPlaylistTui: newCurrentPlaylistTui(dump, appleMusic),
 		playingTui:         newPlayingTui(dump, appleMusic),
+		helpTui:            newHelpTui(dump),
 		data:               topData{},
 	}
 }
@@ -193,10 +195,7 @@ func (m *topTui) reSize() string {
 	leftHeight -= lipgloss.Height(header)
 
 	// footer
-	footer := lipgloss.NewStyle().
-		Align(lipgloss.Center).
-		Width(width).
-		Render("p: play/pause, s: pause, n: next, b: previous, u: volume up, d: volume down, f: favorite, r: refresh, q: quit")
+	footer := m.helpTui.Width(width).View()
 	leftHeight -= lipgloss.Height(footer)
 
 	// content

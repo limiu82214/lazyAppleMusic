@@ -21,32 +21,32 @@ type topData struct {
 	PlayerPosition int
 	CurrentAlbum   string
 }
-type topModel struct {
-	dump            io.Writer
-	appleMusic      bridge.PlayerBridge
-	choices         []string         // items on the to-do list
-	cursor          int              // which to-do list item our cursor is pointing at
-	selected        map[int]struct{} // which to-do items are selected
-	width           int
-	height          int
-	currentPlaylist currentPlaylistModel
-	vpOfContent     viewport.Model
+type topTui struct {
+	dump               io.Writer
+	appleMusic         bridge.PlayerBridge
+	choices            []string         // items on the to-do list
+	cursor             int              // which to-do list item our cursor is pointing at
+	selected           map[int]struct{} // which to-do items are selected
+	width              int
+	height             int
+	currentPlaylistTui currentPlaylistTui
+	vpOfContent        viewport.Model
 
-	playingModel PlayingModel
-	data         topData
+	playingTui PlayingTui
+	data       topData
 }
 
-func InitialTopModel(dump io.Writer) topModel {
+func InitialTopTui(dump io.Writer) topTui {
 	appleMusic := bridge.NewAppleMusicBridge(dump)
-	return topModel{
-		dump:            dump,
-		appleMusic:      appleMusic,
-		choices:         []string{"Playing"},
-		selected:        make(map[int]struct{}),
-		currentPlaylist: newCurrentPlaylistModel(dump, appleMusic),
-		vpOfContent:     viewport.New(0, 0),
-		playingModel:    newPlayingModel(dump, appleMusic),
-		data:            topData{},
+	return topTui{
+		dump:               dump,
+		appleMusic:         appleMusic,
+		choices:            []string{"Playing"},
+		selected:           make(map[int]struct{}),
+		vpOfContent:        viewport.New(0, 0),
+		currentPlaylistTui: newCurrentPlaylistTui(dump, appleMusic),
+		playingTui:         newPlayingTui(dump, appleMusic),
+		data:               topData{},
 	}
 }
 
@@ -58,7 +58,7 @@ func doTick() tea.Cmd {
 
 // ======= MAIN
 
-func (m topModel) Init() tea.Cmd {
+func (m topTui) Init() tea.Cmd {
 	m.fetchData()
 	m.reSize()
 	return tea.Batch(
@@ -68,44 +68,44 @@ func (m topModel) Init() tea.Cmd {
 
 // ======= VIEW
 
-func (m topModel) View() string {
+func (m topTui) View() string {
 	return m.reSize()
 }
 
-func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case constant.EventUpdateTrackData:
 		spew.Fprintln(m.dump, "Top EventUpdateTrackData:", util.JsonMarshalWhatever(msg))
-		pm, cmd := m.playingModel.Update(msg)
-		m.playingModel, _ = pm.(PlayingModel)
+		pm, cmd := m.playingTui.Update(msg)
+		m.playingTui, _ = pm.(PlayingTui)
 
 		m.reSize()
 		return m, cmd
 	case constant.EventUpdateCurrentAlbumImg:
 		// spew.Fprintln(m.dump, "Top EventUpdateCurrentAlbumImg:", util.JsonMarshalWhatever(msg))
-		pm, cmd := m.playingModel.Update(msg)
-		m.playingModel, _ = pm.(PlayingModel)
+		pm, cmd := m.playingTui.Update(msg)
+		m.playingTui, _ = pm.(PlayingTui)
 
 		m.reSize()
 		return m, cmd
 	case constant.EventUpdatePlayerPosition:
 		spew.Fprintln(m.dump, "Top EventUpdatePlayerPosition:", util.JsonMarshalWhatever(msg))
-		pm, cmd := m.playingModel.Update(msg)
-		m.playingModel, _ = pm.(PlayingModel)
+		pm, cmd := m.playingTui.Update(msg)
+		m.playingTui, _ = pm.(PlayingTui)
 		m.reSize()
 		return m, cmd
 
 	case timer.TimeoutMsg:
 		spew.Fprintln(m.dump, "Top TimeoutMsg:", util.JsonMarshalWhatever(msg))
-		pm, cmd := m.playingModel.Update(msg)
-		m.playingModel, _ = pm.(PlayingModel)
+		pm, cmd := m.playingTui.Update(msg)
+		m.playingTui, _ = pm.(PlayingTui)
 		m.reSize()
 		return m, cmd
 
 	case timer.TickMsg:
 		spew.Fprintln(m.dump, "Top TickMsg:", util.JsonMarshalWhatever(msg))
-		pm, cmd := m.playingModel.Update(msg)
-		m.playingModel, _ = pm.(PlayingModel)
+		pm, cmd := m.playingTui.Update(msg)
+		m.playingTui, _ = pm.(PlayingTui)
 		m.reSize()
 		return m, cmd
 
@@ -181,7 +181,7 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *topModel) reSize() string {
+func (m *topTui) reSize() string {
 	// 整理資料
 
 	leftHeight := m.height
@@ -189,7 +189,7 @@ func (m *topModel) reSize() string {
 	width := m.width - borderSize
 
 	// header
-	header := m.playingModel.Width(width).View()
+	header := m.playingTui.Width(width).View()
 	leftHeight -= lipgloss.Height(header)
 
 	// footer
@@ -223,20 +223,20 @@ func (m *topModel) reSize() string {
 
 // ====== fetch
 
-func (m *topModel) fetchData() []tea.Cmd {
+func (m *topTui) fetchData() []tea.Cmd {
 	cmds := []tea.Cmd{}
 	cmds = append(cmds, util.ToTeaCmd(m.fetchCurrentTrack))
 	cmds = append(cmds, util.ToTeaCmd(m.fetchCurrentAlbumImg))
 	cmds = append(cmds, util.ToTeaCmd(m.fetchPlayerPosition))
 
 	// currentPlaylist
-	m.currentPlaylist.fetch() // TODO: consider goroutine because it is slow, make sure using mutex prevent concurrent access
-	m.vpOfContent.SetContent(m.currentPlaylist.View())
+	m.currentPlaylistTui.fetch() // TODO: consider goroutine because it is slow, make sure using mutex prevent concurrent access
+	m.vpOfContent.SetContent(m.currentPlaylistTui.View())
 
 	return cmds
 }
 
-func (m topModel) fetchCurrentTrack() constant.EventUpdateTrackData {
+func (m topTui) fetchCurrentTrack() constant.EventUpdateTrackData {
 	track, err := m.appleMusic.GetCurrentTrack()
 	if err != nil {
 		spew.Fprintln(m.dump, "Error fetching current track:", err)
@@ -245,7 +245,7 @@ func (m topModel) fetchCurrentTrack() constant.EventUpdateTrackData {
 	return constant.EventUpdateTrackData(track)
 }
 
-func (m topModel) fetchCurrentAlbumImg() constant.EventUpdateCurrentAlbumImg {
+func (m topTui) fetchCurrentAlbumImg() constant.EventUpdateCurrentAlbumImg {
 	currentAlbumImg, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
 	if err != nil {
 		currentAlbumImg = "Error fetching current album: " + err.Error()
@@ -253,7 +253,7 @@ func (m topModel) fetchCurrentAlbumImg() constant.EventUpdateCurrentAlbumImg {
 	return constant.EventUpdateCurrentAlbumImg(currentAlbumImg)
 }
 
-func (m topModel) fetchPlayerPosition() constant.EventUpdatePlayerPosition {
+func (m topTui) fetchPlayerPosition() constant.EventUpdatePlayerPosition {
 	playerPosition, err := m.appleMusic.GetPlayerPosition()
 	if err != nil {
 		spew.Fprintln(m.dump, "Error fetching player position:", err)

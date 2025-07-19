@@ -16,13 +16,13 @@ import (
 
 var playingDebug = false
 
-type PlayingModel interface {
+type PlayingTui interface {
 	tea.Model
-	Width(width int) PlayingModel
-	Height(height int) PlayingModel
+	Width(width int) PlayingTui
+	Height(height int) PlayingTui
 }
 
-type playingModel struct {
+type playingTui struct {
 	dump              io.Writer
 	appleMusic        bridge.PlayerBridge
 	playingTrackTimer timer.Model
@@ -33,8 +33,8 @@ type playingModel struct {
 	currentPosition int
 }
 
-func newPlayingModel(dump io.Writer, bridge bridge.PlayerBridge) PlayingModel {
-	obj := &playingModel{
+func newPlayingTui(dump io.Writer, bridge bridge.PlayerBridge) PlayingTui {
+	obj := &playingTui{
 		dump:       dump,
 		appleMusic: bridge,
 		style: lipgloss.NewStyle().
@@ -56,11 +56,11 @@ func newPlayingModel(dump io.Writer, bridge bridge.PlayerBridge) PlayingModel {
 
 // ======= MAIN
 
-func (m *playingModel) Init() tea.Cmd {
+func (m *playingTui) Init() tea.Cmd {
 	return nil
 }
 
-func (m *playingModel) View() string {
+func (m *playingTui) View() string {
 	spew.Fprintln(m.dump, "playing view: ", m.track)
 	viewStr := m.track.Name + " - " + m.track.Artist
 	if m.track.Favorited {
@@ -75,7 +75,7 @@ func (m *playingModel) View() string {
 	return viewStr
 }
 
-func (m *playingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *playingTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.dump != nil {
 		spew.Fprintln(m.dump, "playing#########: ", msg)
 	}
@@ -111,11 +111,11 @@ func (m *playingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // ======= Other
-func (m *playingModel) Width(width int) PlayingModel {
+func (m *playingTui) Width(width int) PlayingTui {
 	m.style = m.style.Width(width)
 	return m
 }
-func (m *playingModel) Height(height int) PlayingModel {
+func (m *playingTui) Height(height int) PlayingTui {
 	m.style = m.style.Height(height)
 	return m
 }

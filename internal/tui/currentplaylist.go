@@ -11,9 +11,9 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-var _ tea.Model = (*currentPlaylistModel)(nil)
+var _ tea.Model = (*currentPlaylistTui)(nil)
 
-type currentPlaylistModel struct {
+type currentPlaylistTui struct {
 	dump            io.Writer
 	appleMusic      bridge.PlayerBridge
 	width           int
@@ -21,14 +21,14 @@ type currentPlaylistModel struct {
 	currentPlaylist model.Playlist
 }
 
-func newCurrentPlaylistModel(dump io.Writer, bridge bridge.PlayerBridge) currentPlaylistModel {
-	return currentPlaylistModel{
+func newCurrentPlaylistTui(dump io.Writer, bridge bridge.PlayerBridge) currentPlaylistTui {
+	return currentPlaylistTui{
 		dump:       dump,
 		appleMusic: bridge,
 	}
 }
 
-func (m *currentPlaylistModel) fetch() {
+func (m *currentPlaylistTui) fetch() {
 	currentPlaylist, err := m.appleMusic.GetCurrentPlaylist()
 	if err != nil {
 		spew.Fdump(m.dump, "Error fetching current playlist:", err)
@@ -38,12 +38,12 @@ func (m *currentPlaylistModel) fetch() {
 
 // ===== MAIN
 
-func (m currentPlaylistModel) Init() tea.Cmd {
+func (m currentPlaylistTui) Init() tea.Cmd {
 	return nil
 }
 
 // ======= UPDATE
-func (m currentPlaylistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.dump != nil {
 		spew.Fprintln(m.dump, "currentplaylist: ", msg)
 	}
@@ -58,13 +58,13 @@ func (m currentPlaylistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, nil
 }
-func (m *currentPlaylistModel) SetSize(width, height int) {
+func (m *currentPlaylistTui) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 }
 
 // ======= VIEW
-func (m currentPlaylistModel) View() string {
+func (m currentPlaylistTui) View() string {
 	viewStr := ""
 	for _, track := range m.currentPlaylist.Tracks {
 		if track.Favorited {

@@ -12,3 +12,7 @@ type Track struct {
 	AlbumArtist string
 	Lyrics      string
 }
+
+func (t Track) FilterValue() string {
+	return t.Name + " " + t.Artist
+}

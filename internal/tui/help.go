@@ -23,9 +23,21 @@ type helpTui struct {
 
 func newHelpTui(dump io.Writer) HelpTui {
 	obj := &helpTui{
-		dump:    dump,
-		style:   lipgloss.NewStyle().Align(lipgloss.Center),
-		content: "p: play/pause, s: pause, n: next, b: previous, u: volume up, d: volume down, f: favorite, r: refresh, q: quit",
+		dump:  dump,
+		style: lipgloss.NewStyle().Align(lipgloss.Center),
+		content: "p: play/pause, " +
+			"s: pause, " +
+			"n: next, " +
+			"b: previous, " +
+			"u: volume up, " +
+			"d: volume down, " +
+			"h: list prev page,j" +
+			"l: list next page, " +
+			"j: list cursor down, " +
+			"k: list cursor up, " +
+			"f: favorite, " +
+			"r: refresh, " +
+			"q: quit",
 	}
 	if !helpDebug {
 		obj.dump = io.Discard

@@ -61,8 +61,9 @@ func (m topTui) Init() tea.Cmd {
 
 func (m topTui) View() string {
 	leftHeight := m.height
-	borderSize := lipgloss.ASCIIBorder().GetLeftSize() + lipgloss.ASCIIBorder().GetRightSize()
-	width := m.width - borderSize
+	wPadding := lipgloss.ASCIIBorder().GetLeftSize() + lipgloss.ASCIIBorder().GetRightSize()
+	hPadding := lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
+	width := m.width - wPadding
 
 	// header
 	header := m.playingTui.Width(width).View()
@@ -73,7 +74,7 @@ func (m topTui) View() string {
 	leftHeight -= lipgloss.Height(footer)
 
 	// content
-	content := m.currentPlaylistTui.Width(width).Height(leftHeight).View()
+	content := m.currentPlaylistTui.Width(width).Height(leftHeight - hPadding).View()
 
 	// leftHeight -= lipgloss.Height(content) + lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
 	// spew.Fprintln(m.dump, "height:", m.height, "header:", lipgloss.Height(header), "content:", lipgloss.Height(content), "footer:", lipgloss.Height(footer))
@@ -174,6 +175,14 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
 			return m, cmd
 		case "j":
+			cpt, cmd := m.currentPlaylistTui.Update(msg)
+			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			return m, cmd
+		case "h":
+			cpt, cmd := m.currentPlaylistTui.Update(msg)
+			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			return m, cmd
+		case "l":
 			cpt, cmd := m.currentPlaylistTui.Update(msg)
 			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
 			return m, cmd

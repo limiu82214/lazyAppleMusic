@@ -16,9 +16,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-// 新增錯誤和計時訊息的類型定義
-type errorMsg struct{ err error }
-
 type topData struct {
 	CurrentTrack   model.Track
 	PlayerPosition int
@@ -35,22 +32,21 @@ type topModel struct {
 	currentPlaylist currentPlaylistModel
 	vpOfContent     viewport.Model
 
-	playingTrackTimer timer.Model
-	data              topData
+	playingModel PlayingModel
+	data         topData
 }
 
-// ======= INITIAL
 func InitialTopModel(dump io.Writer) topModel {
 	appleMusic := bridge.NewAppleMusicBridge(dump)
 	return topModel{
-		dump:              dump,
-		appleMusic:        appleMusic,
-		choices:           []string{"Playing"},
-		selected:          make(map[int]struct{}),
-		currentPlaylist:   newCurrentPlaylistModel(dump, appleMusic),
-		vpOfContent:       viewport.New(0, 0),
-		playingTrackTimer: timer.NewWithInterval(0, time.Second),
-		data:              topData{},
+		dump:            dump,
+		appleMusic:      appleMusic,
+		choices:         []string{"Playing"},
+		selected:        make(map[int]struct{}),
+		currentPlaylist: newCurrentPlaylistModel(dump, appleMusic),
+		vpOfContent:     viewport.New(0, 0),
+		playingModel:    newPlayingModel(dump, appleMusic),
+		data:            topData{},
 	}
 }
 
@@ -60,6 +56,8 @@ func doTick() tea.Cmd {
 	})
 }
 
+// ======= MAIN
+
 func (m topModel) Init() tea.Cmd {
 	m.fetchData()
 	m.reSize()
@@ -68,24 +66,49 @@ func (m topModel) Init() tea.Cmd {
 	)
 }
 
-// ======= UPDATE
+// ======= VIEW
+
+func (m topModel) View() string {
+	return m.reSize()
+}
+
 func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case constant.EventUpdateTrackData:
+		spew.Fprintln(m.dump, "Top EventUpdateTrackData:", util.JsonMarshalWhatever(msg))
+		pm, cmd := m.playingModel.Update(msg)
+		m.playingModel, _ = pm.(PlayingModel)
+
+		m.reSize()
+		return m, cmd
+	case constant.EventUpdateCurrentAlbumImg:
+		// spew.Fprintln(m.dump, "Top EventUpdateCurrentAlbumImg:", util.JsonMarshalWhatever(msg))
+		pm, cmd := m.playingModel.Update(msg)
+		m.playingModel, _ = pm.(PlayingModel)
+
+		m.reSize()
+		return m, cmd
+	case constant.EventUpdatePlayerPosition:
+		spew.Fprintln(m.dump, "Top EventUpdatePlayerPosition:", util.JsonMarshalWhatever(msg))
+		pm, cmd := m.playingModel.Update(msg)
+		m.playingModel, _ = pm.(PlayingModel)
+		m.reSize()
+		return m, cmd
 
 	case timer.TimeoutMsg:
 		spew.Fprintln(m.dump, "Top TimeoutMsg:", util.JsonMarshalWhatever(msg))
-		switch msg.ID {
-		case m.playingTrackTimer.ID():
-			return m, nil
-		}
+		pm, cmd := m.playingModel.Update(msg)
+		m.playingModel, _ = pm.(PlayingModel)
+		m.reSize()
+		return m, cmd
+
 	case timer.TickMsg:
 		spew.Fprintln(m.dump, "Top TickMsg:", util.JsonMarshalWhatever(msg))
-		switch msg.ID {
-		case m.playingTrackTimer.ID():
-			var cmd tea.Cmd
-			m.playingTrackTimer, cmd = m.playingTrackTimer.Update(msg)
-			return m, cmd
-		}
+		pm, cmd := m.playingModel.Update(msg)
+		m.playingModel, _ = pm.(PlayingModel)
+		m.reSize()
+		return m, cmd
+
 	case constant.TickMsg:
 		spew.Fprintln(m.dump, "Top constant.TickMsg:", util.JsonMarshalWhatever(msg))
 		cmds := m.fetchData()
@@ -116,7 +139,7 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "b":
 			return m, m.appleMusic.PreviousTrack()
 		case "s":
-			return m, tea.Batch(m.playingTrackTimer.Stop(), m.appleMusic.Pause())
+			return m, tea.Batch(m.appleMusic.Pause())
 		case "u":
 			return m, m.appleMusic.IncreaseVolume()
 		case "d":
@@ -158,68 +181,15 @@ func (m topModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ======= VIEW
-
-func (m topModel) View() string {
-	return m.reSize()
-}
-
-func (m *topModel) fetchData() []tea.Cmd {
-	cmds := []tea.Cmd{}
-	// track
-	oldTrckId := m.data.CurrentTrack.Id
-	track, err := m.appleMusic.GetCurrentTrack()
-	if err != nil {
-		track.Name = err.Error()
-	}
-	m.data.CurrentTrack = track
-
-	// other
-	if oldTrckId != m.data.CurrentTrack.Id {
-		// playingTrackTimer
-		m.data.PlayerPosition, err = m.appleMusic.GetPlayerPosition()
-		if err != nil {
-			spew.Fdump(m.dump, "Error fetching player position:", err)
-			m.data.PlayerPosition = 0
-		}
-		m.playingTrackTimer = timer.NewWithInterval(time.Duration(int(m.data.CurrentTrack.Duration)-m.data.PlayerPosition)*time.Second, time.Second)
-		cmds = append(cmds, m.playingTrackTimer.Init())
-
-		// currentAlbum
-		currentAlbum, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
-		if err != nil {
-			currentAlbum = "Error fetching current album: " + err.Error()
-		}
-		m.data.CurrentAlbum = currentAlbum
-
-		// currentPlaylist
-		m.currentPlaylist.fetch() // TODO: consider goroutine because it is slow, make sure using mutex prevent concurrent access
-		m.vpOfContent.SetContent(m.currentPlaylist.View())
-	}
-
-	return cmds
-}
 func (m *topModel) reSize() string {
 	// 整理資料
-	trackString := m.data.CurrentTrack.Name + " - " + m.data.CurrentTrack.Artist
-	if m.data.CurrentTrack.Favorited {
-		trackString += " (" + constant.Favorite + ") "
-	} else {
-		trackString += " (" + constant.Unfavorite + ") "
-	}
-	trackString += " " + m.playingTrackTimer.Timeout.Abs().String() + " / "
-	trackString += m.data.CurrentTrack.Time
 
 	leftHeight := m.height
 	borderSize := lipgloss.ASCIIBorder().GetLeftSize() + lipgloss.ASCIIBorder().GetRightSize()
 	width := m.width - borderSize
 
 	// header
-	header := lipgloss.NewStyle().
-		Align(lipgloss.Center).
-		Width(width).
-		Border(lipgloss.RoundedBorder()).
-		Render(m.data.CurrentAlbum + "\n" + trackString)
+	header := m.playingModel.Width(width).View()
 	leftHeight -= lipgloss.Height(header)
 
 	// footer
@@ -249,4 +219,45 @@ func (m *topModel) reSize() string {
 
 	return view
 
+}
+
+// ====== fetch
+
+func (m *topModel) fetchData() []tea.Cmd {
+	cmds := []tea.Cmd{}
+	cmds = append(cmds, util.ToTeaCmd(m.fetchCurrentTrack))
+	cmds = append(cmds, util.ToTeaCmd(m.fetchCurrentAlbumImg))
+	cmds = append(cmds, util.ToTeaCmd(m.fetchPlayerPosition))
+
+	// currentPlaylist
+	m.currentPlaylist.fetch() // TODO: consider goroutine because it is slow, make sure using mutex prevent concurrent access
+	m.vpOfContent.SetContent(m.currentPlaylist.View())
+
+	return cmds
+}
+
+func (m topModel) fetchCurrentTrack() constant.EventUpdateTrackData {
+	track, err := m.appleMusic.GetCurrentTrack()
+	if err != nil {
+		spew.Fprintln(m.dump, "Error fetching current track:", err)
+		track.Name = err.Error()
+	}
+	return constant.EventUpdateTrackData(track)
+}
+
+func (m topModel) fetchCurrentAlbumImg() constant.EventUpdateCurrentAlbumImg {
+	currentAlbumImg, err := m.appleMusic.GetCurrentAlbum(int(float64(m.height)/2.5), int(float64(m.height)/2.5))
+	if err != nil {
+		currentAlbumImg = "Error fetching current album: " + err.Error()
+	}
+	return constant.EventUpdateCurrentAlbumImg(currentAlbumImg)
+}
+
+func (m topModel) fetchPlayerPosition() constant.EventUpdatePlayerPosition {
+	playerPosition, err := m.appleMusic.GetPlayerPosition()
+	if err != nil {
+		spew.Fprintln(m.dump, "Error fetching player position:", err)
+		playerPosition = 0
+	}
+	return constant.EventUpdatePlayerPosition(playerPosition)
 }

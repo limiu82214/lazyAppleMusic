@@ -1,7 +1,7 @@
 # lazyAppleMusic
 
-this is an Apple Music TUI.
-![preview](asset/demo.png)
+this is an Apple Music TUI.  
+![preview](asset/demo.gif)
 
 ## model
 

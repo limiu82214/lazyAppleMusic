@@ -1,4 +1,4 @@
-.PHONY: run
+.PHONY: run autoload tmux generate-demo-gif
 
 
 run:
@@ -31,3 +31,6 @@ tmux:
 	tmux send-keys -t lazyAppleMusic:main.4 && \
 	tmux select-layout -t lazyAppleMusic:main && \
 	tmux attach -t lazyAppleMusic
+
+generate-demo-gif:
+	vhs demo.tape

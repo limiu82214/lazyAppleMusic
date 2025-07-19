@@ -6,6 +6,7 @@ import (
 	"limiu82214/lazyAppleMusic/internal/bridge"
 	"limiu82214/lazyAppleMusic/internal/constant"
 	"limiu82214/lazyAppleMusic/internal/model"
+	"limiu82214/lazyAppleMusic/internal/util"
 	"strings"
 
 	// "limiu82214/lazyAppleMusic/internal/bridge"
@@ -15,7 +16,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-var currentPlaylistDebug = true
+var currentPlaylistDebug = false
 
 type CurrentPlaylistTui interface {
 	tea.Model
@@ -90,8 +91,25 @@ func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.PrevPage()
 		case "l":
 			m.list.NextPage()
+		case "f":
+			track := m.list.SelectedItem().(model.Track)
+			return m, util.ToTeaCmdMsg(constant.ShouldFavoriteTrackId(track.Id))
 		}
-
+	case constant.EventFavoriteTrackId:
+		items := m.list.Items()
+		index := -1
+		for i := range items {
+			item := items[i].(model.Track)
+			if item.Id == string(msg) {
+				index = i
+				break
+			}
+		}
+		if index > 0 {
+			tmp := m.list.Items()[index].(model.Track)
+			tmp.Favorited = !tmp.Favorited
+			m.list.SetItem(index, tmp)
+		}
 	}
 
 	return m, nil

@@ -86,6 +86,15 @@ func (m *playingTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		pos := int(msg)
 		m.playingTrackTimer = timer.NewWithInterval(time.Duration(int(m.track.Duration)-pos)*time.Second, time.Second)
 		return m, m.playingTrackTimer.Init()
+	case constant.EventFavoriteTrackId:
+		if m.track.Id == string(msg) {
+			if m.track.Favorited {
+				m.track.Favorited = false
+			} else {
+				m.track.Favorited = true
+			}
+			return m, nil
+		}
 
 	case timer.TickMsg:
 		switch msg.ID {

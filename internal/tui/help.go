@@ -35,7 +35,8 @@ func newHelpTui(dump io.Writer) HelpTui {
 			"l: list next page, " +
 			"j: list cursor down, " +
 			"k: list cursor up, " +
-			"f: favorite, " +
+			"f: favorite selected track, " +
+			"F: favorite current track, " +
 			"r: refresh, " +
 			"q: quit",
 	}

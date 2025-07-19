@@ -90,6 +90,7 @@ func (m topTui) View() string {
 }
 
 func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
 	case constant.EventUpdateTrackData:
 		spew.Fprintln(m.dump, "Top EventUpdateTrackData:", util.JsonMarshalWhatever(msg))
@@ -115,6 +116,21 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
 
 		return m, cmd
+	case constant.ShouldFavoriteTrackId:
+		spew.Fprintln(m.dump, "Top ShouldFavoriteTrack:", util.JsonMarshalWhatever(msg))
+		return m, m.appleMusic.FavoriteTrackByTrackId(string(msg))
+
+	case constant.EventFavoriteTrackId:
+		spew.Fprintln(m.dump, "Top EventFavoriteTrackId:", util.JsonMarshalWhatever(msg))
+		pm, cmd := m.playingTui.Update(msg)
+		cmds = append(cmds, cmd)
+		m.playingTui, _ = pm.(PlayingTui)
+
+		cpt, cmd := m.currentPlaylistTui.Update(msg)
+		cmds = append(cmds, cmd)
+		m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+
+		return m, tea.Batch(cmds...)
 
 	case timer.TimeoutMsg:
 		spew.Fprintln(m.dump, "Top TimeoutMsg:", util.JsonMarshalWhatever(msg))
@@ -164,8 +180,12 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.appleMusic.IncreaseVolume()
 		case "d":
 			return m, m.appleMusic.DecreaseVolume()
+		case "F":
+			return m, m.appleMusic.FavoriteCurrentTrack()
 		case "f":
-			return m, m.appleMusic.FavoriteTrack()
+			cpt, cmd := m.currentPlaylistTui.Update(msg)
+			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			return m, cmd
 		case "r":
 			cmds := m.fetchData()
 

@@ -19,3 +19,9 @@ func ToTeaCmd[T tea.Msg](f func() T) tea.Cmd {
 		return f()
 	}
 }
+
+func ToTeaCmdMsg[T tea.Msg](msg T) tea.Cmd {
+	return func() tea.Msg {
+		return msg
+	}
+}

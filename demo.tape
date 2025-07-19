@@ -21,7 +21,11 @@ Show
 Set TypingSpeed 0.5
 Type j
 Type j
+Type f
 Type j
+Type f
+Sleep 1
+Type f
 Type j
 Type j
 Type j

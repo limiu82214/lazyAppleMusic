@@ -28,7 +28,8 @@ type PlayerBridge interface {
 	DecreaseVolume() tea.Cmd
 	PlayPlaylist(playlistName string) tea.Cmd
 	PlayTrackByName(trackName string) tea.Cmd
-	FavoriteTrack() tea.Cmd
+	FavoriteCurrentTrack() tea.Cmd
+	FavoriteTrackByTrackId(id string) tea.Cmd
 
 	GetPlayerPosition() (int, error)
 	GetCurrentAlbum(width, height int) (string, error)
@@ -73,7 +74,7 @@ func (a *appleMusicBridge) appleTrackRecordMap2Track(m map[string]string) model.
 	playedCount, _ := strconv.Atoi(m["played count"])
 
 	track := model.Track{
-		Id:          m["id"],
+		Id:          m["persistent ID"],
 		Name:        m["name"],
 		Time:        m["time"],
 		Duration:    duration,
@@ -240,21 +241,63 @@ func (a *appleMusicBridge) PlayTrackByName(trackName string) tea.Cmd {
 	}
 }
 
-func (a *appleMusicBridge) FavoriteTrack() tea.Cmd {
+func (a *appleMusicBridge) FavoriteCurrentTrack() tea.Cmd {
 	return func() tea.Msg {
 		cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s"
 			set aTrack to current track
+			set persistentId to persistent ID of aTrack
 			if favorited of aTrack then
 				set favorited of aTrack to false
 			else
 				set favorited of aTrack to true
 			end if
-		end tell`, a.appName))
-		if err := cmd.Run(); err != nil {
+		end tell
+		return persistentId
+		`, a.appName))
+		output, err := cmd.Output()
+		if err != nil {
 			a.log(fmt.Sprintf("Error favoriting track: %v", err.Error()))
 			return err
 		}
-		return nil
+
+		return constant.EventFavoriteTrackId(strings.TrimSpace(string(output)))
+	}
+}
+
+func (a *appleMusicBridge) FavoriteTrackByTrackId(id string) tea.Cmd {
+	return func() tea.Msg {
+		script := fmt.Sprintf(`set targetID to "%s"
+			set foundTrack to missing value
+			tell application "%s"
+				repeat with p in every playlist
+					try
+						set foundTrack to (first track of p whose persistent ID is targetID)
+						if foundTrack is not missing value then
+							exit repeat
+						end if
+					end try
+				end repeat
+
+				if foundTrack is not missing value then
+					if favorited of foundTrack then
+						set favorited of foundTrack to false
+					else
+						set favorited of foundTrack to true
+					end if
+					return "成功將歌曲「" & (get name of foundTrack) & "」加入收藏！"
+				else
+					return "錯誤：找不到 persistent ID 為 " & targetID & " 的歌曲。"
+				end if
+			end tell`, id, a.appName)
+
+		cmd := exec.Command("osascript", "-e", script)
+
+		if err := cmd.Run(); err != nil {
+			a.log(fmt.Sprintf("Error favoriting track byid: %v", err))
+			return err
+		}
+
+		return constant.EventFavoriteTrackId(id)
 	}
 }
 

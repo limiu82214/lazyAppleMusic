@@ -5,16 +5,16 @@ import (
 	"limiu82214/lazyAppleMusic/internal/bridge"
 	"limiu82214/lazyAppleMusic/internal/constant"
 	"limiu82214/lazyAppleMusic/internal/model"
+	"limiu82214/lazyAppleMusic/internal/util"
 	"time"
 
 	// "limiu82214/lazyAppleMusic/internal/bridge"
 	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/davecgh/go-spew/spew"
 )
 
-var playingDebug = false
+var playingDebug = true
 
 type PlayingTui interface {
 	tea.Model
@@ -27,10 +27,9 @@ type playingTui struct {
 	appleMusic        bridge.PlayerBridge
 	playingTrackTimer timer.Model
 
-	style           lipgloss.Style
-	track           model.Track
-	albumImg        string
-	currentPosition int
+	style    lipgloss.Style
+	track    model.Track
+	albumImg string
 }
 
 func newPlayingTui(dump io.Writer, bridge bridge.PlayerBridge) PlayingTui {
@@ -44,8 +43,6 @@ func newPlayingTui(dump io.Writer, bridge bridge.PlayerBridge) PlayingTui {
 		playingTrackTimer: timer.NewWithInterval(0, time.Second),
 		track:             model.Track{},
 		albumImg:          "󰎃",
-
-		currentPosition: 0,
 	}
 	if !playingDebug {
 		obj.dump = io.Discard
@@ -61,7 +58,6 @@ func (m *playingTui) Init() tea.Cmd {
 }
 
 func (m *playingTui) View() string {
-	spew.Fprintln(m.dump, "playing view: ", m.track)
 	viewStr := m.track.Name + " - " + m.track.Artist
 	if m.track.Favorited {
 		viewStr += " (" + constant.Favorite + ") "
@@ -70,14 +66,15 @@ func (m *playingTui) View() string {
 	}
 	viewStr += " " + m.playingTrackTimer.Timeout.Abs().String() + " / "
 	viewStr += m.track.Time
-	viewStr = m.style.Render(m.albumImg + "\n" + viewStr)
+	playPercentage := (m.track.Duration - m.playingTrackTimer.Timeout.Seconds()) * 100 / m.track.Duration
+	viewStr = m.style.Render(m.albumImg + "\n" + util.ProgressBarUi(int(playPercentage), int(float64(m.style.GetWidth())*0.8)) + "\n" + viewStr)
 
 	return viewStr
 }
 
 func (m *playingTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.dump != nil {
-		spew.Fprintln(m.dump, "playing", msg)
+		// spew.Fprintln(m.dump, "playing", msg)
 	}
 
 	switch msg := msg.(type) {
@@ -88,7 +85,6 @@ func (m *playingTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case constant.EventUpdatePlayerPosition:
 		pos := int(msg)
 		m.playingTrackTimer = timer.NewWithInterval(time.Duration(int(m.track.Duration)-pos)*time.Second, time.Second)
-		m.currentPosition = pos
 		return m, m.playingTrackTimer.Init()
 
 	case timer.TickMsg:

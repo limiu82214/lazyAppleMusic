@@ -16,6 +16,7 @@ type EventTrackChanged struct{}
 type EventUpdateTrackData model.Track
 type EventUpdateCurrentAlbumImg string
 type EventUpdatePlayerPosition int
+type EventUpdateCurrentPlaylist model.Playlist
 
 const (
 	Favorite   = "󰋑"

@@ -3,52 +3,42 @@ package tui
 import (
 	"io"
 	"limiu82214/lazyAppleMusic/internal/bridge"
-	"limiu82214/lazyAppleMusic/internal/model"
 	"limiu82214/lazyAppleMusic/internal/util"
 	"time"
 
 	"limiu82214/lazyAppleMusic/internal/constant"
 
 	"github.com/charmbracelet/bubbles/timer"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/davecgh/go-spew/spew"
 )
 
-type topData struct {
-	CurrentTrack   model.Track
-	PlayerPosition int
-	CurrentAlbum   string
-}
 type topTui struct {
-	dump               io.Writer
-	appleMusic         bridge.PlayerBridge
-	choices            []string         // items on the to-do list
-	cursor             int              // which to-do list item our cursor is pointing at
-	selected           map[int]struct{} // which to-do items are selected
-	width              int
-	height             int
-	currentPlaylistTui currentPlaylistTui
-	vpOfContent        viewport.Model
+	dump       io.Writer
+	appleMusic bridge.PlayerBridge
+	choices    []string         // items on the to-do list
+	cursor     int              // which to-do list item our cursor is pointing at
+	selected   map[int]struct{} // which to-do items are selected
+	width      int
+	height     int
 
-	playingTui PlayingTui
-	helpTui    HelpTui
-	data       topData
+	playingTui         PlayingTui
+	currentPlaylistTui CurrentPlaylistTui
+	helpTui            HelpTui
 }
 
 func InitialTopTui(dump io.Writer) topTui {
 	appleMusic := bridge.NewAppleMusicBridge(dump)
 	return topTui{
-		dump:               dump,
-		appleMusic:         appleMusic,
-		choices:            []string{"Playing"},
-		selected:           make(map[int]struct{}),
-		vpOfContent:        viewport.New(0, 0),
-		currentPlaylistTui: newCurrentPlaylistTui(dump, appleMusic),
+		dump:       dump,
+		appleMusic: appleMusic,
+		choices:    []string{"Playing"},
+		selected:   make(map[int]struct{}),
+
 		playingTui:         newPlayingTui(dump, appleMusic),
+		currentPlaylistTui: newCurrentPlaylistTui(dump, appleMusic),
 		helpTui:            newHelpTui(dump),
-		data:               topData{},
 	}
 }
 
@@ -94,6 +84,12 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		spew.Fprintln(m.dump, "Top EventUpdatePlayerPosition:", util.JsonMarshalWhatever(msg))
 		pm, cmd := m.playingTui.Update(msg)
 		m.playingTui, _ = pm.(PlayingTui)
+		m.reSize()
+		return m, cmd
+	case constant.EventUpdateCurrentPlaylist:
+		// spew.Fprintln(m.dump, "Top EventUpdateCurrentPlaylist:", util.JsonMarshalWhatever(msg))
+		cpt, cmd := m.currentPlaylistTui.Update(msg)
+		m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
 		m.reSize()
 		return m, cmd
 
@@ -153,11 +149,13 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.reSize()
 			return m, tea.Batch(cmds...)
 		case "k":
-			m.vpOfContent.ScrollUp(1)
-			return m, nil
+			cpt, cmd := m.currentPlaylistTui.Update(msg)
+			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			return m, cmd
 		case "j":
-			m.vpOfContent.ScrollDown(1)
-			return m, nil
+			cpt, cmd := m.currentPlaylistTui.Update(msg)
+			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			return m, cmd
 
 			// // old
 			// case "up", "k":
@@ -199,12 +197,7 @@ func (m *topTui) reSize() string {
 	leftHeight -= lipgloss.Height(footer)
 
 	// content
-	m.vpOfContent.Width = width
-	m.vpOfContent.Height = leftHeight
-	m.vpOfContent.Style = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Width(m.width)
-	content := m.vpOfContent.View()
+	content := m.currentPlaylistTui.Width(width).Height(leftHeight).View()
 
 	// leftHeight -= lipgloss.Height(content) + lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
 	// spew.Fprintln(m.dump, "height:", m.height, "header:", lipgloss.Height(header), "content:", lipgloss.Height(content), "footer:", lipgloss.Height(footer))
@@ -227,11 +220,7 @@ func (m *topTui) fetchData() []tea.Cmd {
 	cmds = append(cmds, util.ToTeaCmd(m.fetchCurrentTrack))
 	cmds = append(cmds, util.ToTeaCmd(m.fetchCurrentAlbumImg))
 	cmds = append(cmds, util.ToTeaCmd(m.fetchPlayerPosition))
-
-	// currentPlaylist
-	m.currentPlaylistTui.fetch() // TODO: consider goroutine because it is slow, make sure using mutex prevent concurrent access
-	m.vpOfContent.SetContent(m.currentPlaylistTui.View())
-
+	cmds = append(cmds, util.ToTeaCmd(m.fetchCurrentPlaylist)) // TODO: consider goroutine because it is slow, make sure using mutex prevent concurrent access
 	return cmds
 }
 
@@ -259,4 +248,12 @@ func (m topTui) fetchPlayerPosition() constant.EventUpdatePlayerPosition {
 		playerPosition = 0
 	}
 	return constant.EventUpdatePlayerPosition(playerPosition)
+}
+
+func (m topTui) fetchCurrentPlaylist() constant.EventUpdateCurrentPlaylist {
+	currentPlaylist, err := m.appleMusic.GetCurrentPlaylist()
+	if err != nil {
+		spew.Fdump(m.dump, "Error fetching current playlist:", err)
+	}
+	return constant.EventUpdateCurrentPlaylist(currentPlaylist)
 }

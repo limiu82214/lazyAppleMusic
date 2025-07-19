@@ -77,7 +77,7 @@ func (m *playingTui) View() string {
 
 func (m *playingTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.dump != nil {
-		spew.Fprintln(m.dump, "playing#########: ", msg)
+		spew.Fprintln(m.dump, "playing", msg)
 	}
 
 	switch msg := msg.(type) {

@@ -10,9 +10,10 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/davecgh/go-spew/spew"
 )
 
-var currentPlaylistDebug = true
+var currentPlaylistDebug = false
 
 type CurrentPlaylistTui interface {
 	tea.Model
@@ -69,7 +70,7 @@ func (m *currentPlaylistTui) View() string {
 
 func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.dump != nil {
-		// spew.Fprintln(m.dump, "currentplaylist: ", msg)
+		spew.Fprintln(m.dump, "currentplaylist: ", msg)
 	}
 
 	switch msg := msg.(type) {

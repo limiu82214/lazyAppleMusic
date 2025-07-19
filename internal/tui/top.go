@@ -52,7 +52,6 @@ func doTick() tea.Cmd {
 
 func (m topTui) Init() tea.Cmd {
 	m.fetchData()
-	m.reSize()
 	return tea.Batch(
 		doTick(),
 	)
@@ -61,7 +60,32 @@ func (m topTui) Init() tea.Cmd {
 // ======= VIEW
 
 func (m topTui) View() string {
-	return m.reSize()
+	leftHeight := m.height
+	borderSize := lipgloss.ASCIIBorder().GetLeftSize() + lipgloss.ASCIIBorder().GetRightSize()
+	width := m.width - borderSize
+
+	// header
+	header := m.playingTui.Width(width).View()
+	leftHeight -= lipgloss.Height(header)
+
+	// footer
+	footer := m.helpTui.Width(width).View()
+	leftHeight -= lipgloss.Height(footer)
+
+	// content
+	content := m.currentPlaylistTui.Width(width).Height(leftHeight).View()
+
+	// leftHeight -= lipgloss.Height(content) + lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
+	// spew.Fprintln(m.dump, "height:", m.height, "header:", lipgloss.Height(header), "content:", lipgloss.Height(content), "footer:", lipgloss.Height(footer))
+
+	view := lipgloss.JoinVertical(
+		lipgloss.Top,
+		header,
+		content,
+		footer,
+	)
+
+	return view
 }
 
 func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -71,46 +95,44 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		pm, cmd := m.playingTui.Update(msg)
 		m.playingTui, _ = pm.(PlayingTui)
 
-		m.reSize()
 		return m, cmd
 	case constant.EventUpdateCurrentAlbumImg:
 		// spew.Fprintln(m.dump, "Top EventUpdateCurrentAlbumImg:", util.JsonMarshalWhatever(msg))
 		pm, cmd := m.playingTui.Update(msg)
 		m.playingTui, _ = pm.(PlayingTui)
 
-		m.reSize()
 		return m, cmd
 	case constant.EventUpdatePlayerPosition:
 		spew.Fprintln(m.dump, "Top EventUpdatePlayerPosition:", util.JsonMarshalWhatever(msg))
 		pm, cmd := m.playingTui.Update(msg)
 		m.playingTui, _ = pm.(PlayingTui)
-		m.reSize()
+
 		return m, cmd
 	case constant.EventUpdateCurrentPlaylist:
 		// spew.Fprintln(m.dump, "Top EventUpdateCurrentPlaylist:", util.JsonMarshalWhatever(msg))
 		cpt, cmd := m.currentPlaylistTui.Update(msg)
 		m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
-		m.reSize()
+
 		return m, cmd
 
 	case timer.TimeoutMsg:
 		spew.Fprintln(m.dump, "Top TimeoutMsg:", util.JsonMarshalWhatever(msg))
 		pm, cmd := m.playingTui.Update(msg)
 		m.playingTui, _ = pm.(PlayingTui)
-		m.reSize()
+
 		return m, cmd
 
 	case timer.TickMsg:
 		spew.Fprintln(m.dump, "Top TickMsg:", util.JsonMarshalWhatever(msg))
 		pm, cmd := m.playingTui.Update(msg)
 		m.playingTui, _ = pm.(PlayingTui)
-		m.reSize()
+
 		return m, cmd
 
 	case constant.TickMsg:
 		spew.Fprintln(m.dump, "Top constant.TickMsg:", util.JsonMarshalWhatever(msg))
 		cmds := m.fetchData()
-		m.reSize()
+
 		cmds = append(cmds, doTick())
 		return m, tea.Batch(cmds...)
 
@@ -118,7 +140,6 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		spew.Fprintln(m.dump, "Top WindowSizeMsg:", util.JsonMarshalWhatever(msg))
 		m.width = msg.Width
 		m.height = msg.Height
-		m.reSize()
 
 	case constant.EventTrackChanged:
 		spew.Fprintln(m.dump, "Top EventTrackChanged:", util.JsonMarshalWhatever(msg))
@@ -146,7 +167,7 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.appleMusic.FavoriteTrack()
 		case "r":
 			cmds := m.fetchData()
-			m.reSize()
+
 			return m, tea.Batch(cmds...)
 		case "k":
 			cpt, cmd := m.currentPlaylistTui.Update(msg)
@@ -156,61 +177,12 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cpt, cmd := m.currentPlaylistTui.Update(msg)
 			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
 			return m, cmd
-
-			// // old
-			// case "up", "k":
-			// 	if m.cursor > 0 {
-			// 		m.cursor--
-			// 	}
-			// case "down", "j":
-			// 	if m.cursor < len(m.choices)-1 {
-			// 		m.cursor++
-			// 	}
-			// case "enter", " ":
-			// 	_, ok := m.selected[m.cursor]
-			// 	if ok {
-			// 		delete(m.selected, m.cursor)
-			// 	} else {
-			// 		m.selected[m.cursor] = struct{}{}
-			// 	}
 		}
 	default:
 		spew.Fprintln(m.dump, "Top unknown case:", util.JsonMarshalWhatever(msg))
 	}
 
 	return m, nil
-}
-
-func (m *topTui) reSize() string {
-	// 整理資料
-
-	leftHeight := m.height
-	borderSize := lipgloss.ASCIIBorder().GetLeftSize() + lipgloss.ASCIIBorder().GetRightSize()
-	width := m.width - borderSize
-
-	// header
-	header := m.playingTui.Width(width).View()
-	leftHeight -= lipgloss.Height(header)
-
-	// footer
-	footer := m.helpTui.Width(width).View()
-	leftHeight -= lipgloss.Height(footer)
-
-	// content
-	content := m.currentPlaylistTui.Width(width).Height(leftHeight).View()
-
-	// leftHeight -= lipgloss.Height(content) + lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
-	// spew.Fprintln(m.dump, "height:", m.height, "header:", lipgloss.Height(header), "content:", lipgloss.Height(content), "footer:", lipgloss.Height(footer))
-
-	view := lipgloss.JoinVertical(
-		lipgloss.Top,
-		header,
-		content,
-		footer,
-	)
-
-	return view
-
 }
 
 // ====== fetch

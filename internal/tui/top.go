@@ -32,8 +32,8 @@ func InitialTopTui(dump io.Writer) topTui {
 		appleMusic: appleMusic,
 
 		playingTui: newPlayingTui(dump, appleMusic),
-		tabTui: newTabTui(dump, []string{"currentPlaylist",
-			"1emptyempty1",
+		tabTui: newTabTui(dump, []string{"Current Play List",
+			"Not Implemented Yet",
 		}, []tea.Model{
 			newCurrentPlaylistTui(dump, appleMusic),
 			emptyModel{},

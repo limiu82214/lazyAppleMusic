@@ -12,13 +12,15 @@ Set Padding 5
 
 Hide
 Type `go run ./cmd/main.go` Enter
-Sleep 1
-Type r
-Sleep 2
+Sleep 5
 
 Show
 
 Set TypingSpeed 0.5
+Type n
+Sleep 2
+Type n
+Sleep 2
 Type j
 Type j
 Type f
@@ -28,6 +30,10 @@ Sleep 1
 Type f
 Type j
 Type j
+Type ">"
+Sleep 2
+Type "<"
+Type f
 Type j
 Type j
 Type l
@@ -35,7 +41,3 @@ Type k
 Type k
 Type k
 Type h
-Type n
-Sleep 2
-Type n
-Sleep 2

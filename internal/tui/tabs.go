@@ -259,14 +259,19 @@ func (m *tabTui) renderTabs() string {
 		visibleTabs = append(visibleTabs, style.Render(m.Tabs[i]))
 	}
 	// 右側提示
-	if end < len(m.Tabs) {
+	isHasRightIndicator := end < len(m.Tabs)
+	if isHasRightIndicator {
 		visibleTabs = append(visibleTabs, "\n󰼧\n─")
 	}
 
 	// 右收邊
 	if pad > 0 {
 		// 補線也要當成 box，丟進去
-		visibleTabs = append(visibleTabs, "\n\n"+strings.Repeat("─", (pad))+"┐")
+		if isHasLeftIndicator || isHasRightIndicator {
+			visibleTabs = append(visibleTabs, "\n\n"+strings.Repeat("─", (pad))+"┐")
+		} else {
+			visibleTabs = append(visibleTabs, "\n\n"+strings.Repeat("─", (pad+1))+"┐")
+		}
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, visibleTabs...)

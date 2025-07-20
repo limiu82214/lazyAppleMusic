@@ -215,6 +215,12 @@ func (m *tabTui) renderTabs() string {
 
 	visibleTabs := []string{}
 
+	// 左側提示
+	isHasLeftIndicator := visibleTabStart > 0
+	if isHasLeftIndicator {
+		visibleTabs = append(visibleTabs, "\n󰼨\n┌")
+	}
+
 	for i := visibleTabStart; i < end; i++ {
 		style := m.styles.inactiveTabStyle
 		if i == m.ActiveTab {
@@ -228,10 +234,12 @@ func (m *tabTui) renderTabs() string {
 		// isGloballyLast := i == len(m.Tabs)-1
 
 		if isFirstVisible {
-			if i == m.ActiveTab {
-
+			switch {
+			case isHasLeftIndicator:
+				border.BottomLeft = "┘"
+			case isActive:
 				border.BottomLeft = "│"
-			} else {
+			default:
 				border.BottomLeft = "├"
 			}
 		}
@@ -249,6 +257,10 @@ func (m *tabTui) renderTabs() string {
 		}
 		style = style.Border(border)
 		visibleTabs = append(visibleTabs, style.Render(m.Tabs[i]))
+	}
+	// 右側提示
+	if end < len(m.Tabs) {
+		visibleTabs = append(visibleTabs, "\n󰼧\n─")
 	}
 	// 右收邊
 	if pad > 0 {

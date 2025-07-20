@@ -17,15 +17,12 @@ import (
 type topTui struct {
 	dump       io.Writer
 	appleMusic bridge.PlayerBridge
-	choices    []string         // items on the to-do list
-	cursor     int              // which to-do list item our cursor is pointing at
-	selected   map[int]struct{} // which to-do items are selected
 	width      int
 	height     int
 
-	playingTui         PlayingTui
-	currentPlaylistTui CurrentPlaylistTui
-	helpTui            HelpTui
+	playingTui PlayingTui
+	tabTui     TabTui
+	helpTui    HelpTui
 }
 
 func InitialTopTui(dump io.Writer) topTui {
@@ -33,12 +30,13 @@ func InitialTopTui(dump io.Writer) topTui {
 	return topTui{
 		dump:       dump,
 		appleMusic: appleMusic,
-		choices:    []string{"Playing"},
-		selected:   make(map[int]struct{}),
 
-		playingTui:         newPlayingTui(dump, appleMusic),
-		currentPlaylistTui: newCurrentPlaylistTui(dump, appleMusic),
-		helpTui:            newHelpTui(dump),
+		playingTui: newPlayingTui(dump, appleMusic),
+		tabTui: newTabTui(dump, []string{"currentPlaylist", "empty"}, []tea.Model{
+			newCurrentPlaylistTui(dump, appleMusic),
+			emptyModel{},
+		}, 0),
+		helpTui: newHelpTui(dump),
 	}
 }
 
@@ -57,12 +55,9 @@ func (m topTui) Init() tea.Cmd {
 	)
 }
 
-// ======= VIEW
-
 func (m topTui) View() string {
 	leftHeight := m.height
 	wPadding := lipgloss.ASCIIBorder().GetLeftSize() + lipgloss.ASCIIBorder().GetRightSize()
-	hPadding := lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
 	width := m.width - wPadding
 
 	// header
@@ -74,7 +69,7 @@ func (m topTui) View() string {
 	leftHeight -= lipgloss.Height(footer)
 
 	// content
-	content := m.currentPlaylistTui.Width(width).Height(leftHeight - hPadding).View()
+	content := m.tabTui.SetWidth(width).SetHeight(leftHeight).View()
 
 	// leftHeight -= lipgloss.Height(content) + lipgloss.ASCIIBorder().GetTopSize() + lipgloss.ASCIIBorder().GetBottomSize()
 	// spew.Fprintln(m.dump, "height:", m.height, "header:", lipgloss.Height(header), "content:", lipgloss.Height(content), "footer:", lipgloss.Height(footer))
@@ -112,10 +107,10 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	case constant.EventUpdateCurrentPlaylist:
 		// spew.Fprintln(m.dump, "Top EventUpdateCurrentPlaylist:", util.JsonMarshalWhatever(msg))
-		cpt, cmd := m.currentPlaylistTui.Update(msg)
-		m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
-
+		tt, cmd := m.tabTui.Update(msg)
+		m.tabTui, _ = tt.(TabTui)
 		return m, cmd
+
 	case constant.ShouldFavoriteTrackId:
 		spew.Fprintln(m.dump, "Top ShouldFavoriteTrack:", util.JsonMarshalWhatever(msg))
 		return m, m.appleMusic.FavoriteTrackByTrackId(string(msg))
@@ -126,9 +121,9 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		m.playingTui, _ = pm.(PlayingTui)
 
-		cpt, cmd := m.currentPlaylistTui.Update(msg)
+		tt, cmd := m.tabTui.Update(msg)
 		cmds = append(cmds, cmd)
-		m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+		m.tabTui, _ = tt.(TabTui)
 
 		return m, tea.Batch(cmds...)
 
@@ -182,30 +177,35 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.appleMusic.DecreaseVolume()
 		case "F":
 			return m, m.appleMusic.FavoriteCurrentTrack()
-		case "f":
-			cpt, cmd := m.currentPlaylistTui.Update(msg)
-			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
-			return m, cmd
 		case "r":
 			cmds := m.fetchData()
-
 			return m, tea.Batch(cmds...)
+		case "f":
+			tt, cmd := m.tabTui.Update(msg)
+			m.tabTui, _ = tt.(TabTui)
+			return m, cmd
 		case "k":
-			cpt, cmd := m.currentPlaylistTui.Update(msg)
-			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			tt, cmd := m.tabTui.Update(msg)
+			m.tabTui, _ = tt.(TabTui)
 			return m, cmd
 		case "j":
-			cpt, cmd := m.currentPlaylistTui.Update(msg)
-			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			tt, cmd := m.tabTui.Update(msg)
+			m.tabTui, _ = tt.(TabTui)
 			return m, cmd
 		case "h":
-			cpt, cmd := m.currentPlaylistTui.Update(msg)
-			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			tt, cmd := m.tabTui.Update(msg)
+			m.tabTui, _ = tt.(TabTui)
 			return m, cmd
 		case "l":
-			cpt, cmd := m.currentPlaylistTui.Update(msg)
-			m.currentPlaylistTui, _ = cpt.(CurrentPlaylistTui)
+			tt, cmd := m.tabTui.Update(msg)
+			m.tabTui, _ = tt.(TabTui)
 			return m, cmd
+
+		case ">":
+			m.tabTui.NextPage()
+		case "<":
+			m.tabTui.PrevPage()
+
 		}
 	default:
 		spew.Fprintln(m.dump, "Top unknown case:", util.JsonMarshalWhatever(msg))

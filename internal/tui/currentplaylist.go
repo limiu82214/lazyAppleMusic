@@ -20,8 +20,10 @@ var currentPlaylistDebug = false
 
 type CurrentPlaylistTui interface {
 	tea.Model
-	Width(width int) CurrentPlaylistTui
-	Height(height int) CurrentPlaylistTui
+	SetWidth(width int) CurrentPlaylistTui
+	SetHeight(height int) CurrentPlaylistTui
+	Width() int
+	Height() int
 }
 
 type currentPlaylistTui struct {
@@ -37,7 +39,6 @@ func newCurrentPlaylistTui(dump io.Writer, bridge bridge.PlayerBridge) CurrentPl
 		model.Track{Name: "Loading...", Artist: "Loading..."},
 	}, currentPlayListDelegate{}, 0, 0)
 	list.SetShowTitle(false)
-	list.SetShowTitle(false)
 	list.SetShowHelp(false)
 	list.SetShowStatusBar(false)
 	list.SetShowPagination(true)
@@ -45,9 +46,6 @@ func newCurrentPlaylistTui(dump io.Writer, bridge bridge.PlayerBridge) CurrentPl
 	obj := &currentPlaylistTui{
 		dump:       dump,
 		appleMusic: bridge,
-		style: lipgloss.NewStyle().
-			Align(lipgloss.Left).
-			Border(lipgloss.RoundedBorder()),
 
 		list: list,
 	}
@@ -117,15 +115,21 @@ func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ======= Other
 
-func (m *currentPlaylistTui) Width(width int) CurrentPlaylistTui {
+func (m *currentPlaylistTui) SetWidth(width int) CurrentPlaylistTui {
 	m.list.SetWidth(width)
 	m.style = m.style.Width(width)
 	return m
 }
-func (m *currentPlaylistTui) Height(height int) CurrentPlaylistTui {
+func (m *currentPlaylistTui) SetHeight(height int) CurrentPlaylistTui {
 	m.list.SetHeight(height)
 	m.style = m.style.Height(height)
 	return m
+}
+func (m currentPlaylistTui) Width() int {
+	return m.style.GetWidth()
+}
+func (m currentPlaylistTui) Height() int {
+	return m.style.GetHeight()
 }
 
 type currentPlayListDelegate struct{}

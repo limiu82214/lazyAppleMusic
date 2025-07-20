@@ -19,6 +19,7 @@ type EventUpdatePlayerPosition int
 type EventUpdateCurrentPlaylist model.Playlist
 type EventFavoriteTrackId string
 type ShouldFavoriteTrackId string
+type ShouldUpdateTabs model.TabTuiData
 
 const (
 	Favorite   = "󰋑"

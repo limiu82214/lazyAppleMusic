@@ -13,15 +13,19 @@ flowchart TD
 ```
 
 ## BUG
-- remain time sync
+
+-   remain time sync
 
 ## TODO
-- [ ] quick find current track in playlist
-- [ ] add user's playlist
-- [ ] search current playlist
+
+-   [ ] direct play current select track
+-   [ ] quick find current track in playlist
+-   [ ] add user's playlist
+-   [ ] search current playlist
 
 ## Maybe TODO
-- cache album, playlist...
+
+-   cache album, playlist...
 
 ## Thank this article help me build this project
 

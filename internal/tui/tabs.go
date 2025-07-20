@@ -81,31 +81,7 @@ func (m *tabTui) View() string {
 	}
 
 	doc := strings.Builder{}
-	var renderedTabs []string
-	for i, tab := range m.Tabs {
-		var style lipgloss.Style
-		isFirst, isLast, isActive := i == 0, i == len(m.Tabs)-1, i == m.ActiveTab
-		if i == m.ActiveTab {
-			style = m.styles.activeTabStyle
-		} else {
-			style = m.styles.inactiveTabStyle
-		}
-		border, _, _, _, _ := style.GetBorder()
-		if isFirst && isActive {
-			border.BottomLeft = "│"
-		} else if isFirst && !isActive {
-			border.BottomLeft = "├"
-		} else if isLast && isActive {
-			border.BottomRight = "│"
-		} else if isLast && !isActive {
-			border.BottomRight = "┤"
-		}
-		style = style.Border(border)
-		renderedTabs = append(renderedTabs, style.Render(tab))
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
-	doc.WriteString(row)
+	doc.WriteString(m.renderTabs())
 	doc.WriteString("\n")
 	spew.Fprintln(m.dump, "width", m.styles.width, m.styles.windowStyle.GetHorizontalFrameSize(), m.styles.windowStyle.GetHorizontalBorderSize())
 	window := m.styles.windowStyle.Width(m.styles.width).
@@ -132,12 +108,6 @@ func (m *tabTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.styles.width = msg.Width
 		m.styles.height = msg.Height
-		spew.Fprintln(m.dump, "QQQQ22222222", msg.Height)
-		var cmd tea.Cmd
-		for i := range m.TabContent {
-			m.TabContent[i], cmd = m.TabContent[i].Update(msg)
-			cmds = append(cmds, cmd)
-		}
 		return m, tea.Batch(cmds...)
 	default:
 		for i := range m.TabContent {
@@ -179,4 +149,113 @@ func (m *tabTui) PrevPage() TabTui {
 		m.ActiveTab--
 	}
 	return m
+}
+
+func (m *tabTui) renderTabs() string {
+
+	if len(m.Tabs) == 0 {
+		return m.styles.docStyle.Render("No tabs available")
+	}
+
+	// 計算每個 tab 的寬度
+	tabWidths := make([]int, len(m.Tabs))
+	for i, tab := range m.Tabs {
+		rendered := m.styles.inactiveTabStyle.Render(tab)
+		tabWidths[i] = lipgloss.Width(rendered)
+	}
+	totalWidth := m.styles.width
+	availableWidth := totalWidth
+
+	// 完全不依賴 m.VisibleTabStart，動態計算 visibleTabStart
+	visibleTabStart := 0
+	end := 0
+	currentWidth := 0
+
+	// 先嘗試從頭開始塞滿
+	for end < len(m.Tabs) && currentWidth+tabWidths[end] <= availableWidth {
+		currentWidth += tabWidths[end]
+		end++
+	}
+	// 如果 ActiveTab 不在視窗內，將視窗右移
+	if m.ActiveTab < visibleTabStart {
+		visibleTabStart = m.ActiveTab
+		end = visibleTabStart
+		currentWidth = 0
+		for end < len(m.Tabs) && currentWidth+tabWidths[end] <= availableWidth {
+			currentWidth += tabWidths[end]
+			end++
+		}
+	} else if m.ActiveTab >= end {
+		visibleTabStart = m.ActiveTab
+		// 向左推到剛好能顯示滿寬度，且 activeTab 在視窗內
+		for visibleTabStart > 0 {
+			width := 0
+			count := 0
+			for i := visibleTabStart; i < len(m.Tabs) && width+tabWidths[i] <= availableWidth; i++ {
+				width += tabWidths[i]
+				count++
+			}
+			if m.ActiveTab >= visibleTabStart && m.ActiveTab < visibleTabStart+count {
+				break
+			}
+			visibleTabStart--
+		}
+		end = visibleTabStart
+		currentWidth = 0
+		for end < len(m.Tabs) && currentWidth+tabWidths[end] <= availableWidth {
+			currentWidth += tabWidths[end]
+			end++
+		}
+	}
+
+	pad := totalWidth
+	for i := visibleTabStart; i < end; i++ {
+		pad -= tabWidths[i]
+	}
+
+	visibleTabs := []string{}
+
+	for i := visibleTabStart; i < end; i++ {
+		style := m.styles.inactiveTabStyle
+		if i == m.ActiveTab {
+			style = m.styles.activeTabStyle
+		}
+		border, _, _, _, _ := style.GetBorder()
+
+		isActive := i == m.ActiveTab
+		isFirstVisible := i == visibleTabStart
+		isLastVisible := i == end-1
+		// isGloballyLast := i == len(m.Tabs)-1
+
+		if isFirstVisible {
+			if i == m.ActiveTab {
+
+				border.BottomLeft = "│"
+			} else {
+				border.BottomLeft = "├"
+			}
+		}
+		if isLastVisible {
+			switch {
+			case isLastVisible && isActive:
+				border.BottomRight = "└"
+			case pad > 0:
+				border.BottomRight = "┴"
+			case pad == 0:
+				border.BottomRight = "┤"
+			default:
+				border.BottomRight = "?"
+			}
+		}
+		style = style.Border(border)
+		visibleTabs = append(visibleTabs, style.Render(m.Tabs[i]))
+	}
+	// 右收邊
+	if pad > 0 {
+		// 補線也要當成 box，丟進去
+		visibleTabs = append(visibleTabs, "\n\n"+strings.Repeat("─", (pad+1))+"┐")
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, visibleTabs...)
+
 }

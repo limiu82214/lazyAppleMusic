@@ -20,12 +20,17 @@ flowchart TD
 
 -   [ ] direct play current select track
 -   [ ] quick find current track in playlist
+-   [ ] toggle random play
+-   [ ] toggle repeat play
 -   [ ] add user's playlist
--   [ ] search current playlist
+-   [ ] search current playlist with input
 
 ## Maybe TODO
 
 -   cache album, playlist...
+-   add dev flow
+-   add to `brew`
+-   add to `awesome-tui`
 
 ## Thank this article help me build this project
 

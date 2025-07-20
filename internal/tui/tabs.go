@@ -262,10 +262,11 @@ func (m *tabTui) renderTabs() string {
 	if end < len(m.Tabs) {
 		visibleTabs = append(visibleTabs, "\n󰼧\n─")
 	}
+
 	// 右收邊
 	if pad > 0 {
 		// 補線也要當成 box，丟進去
-		visibleTabs = append(visibleTabs, "\n\n"+strings.Repeat("─", (pad+1))+"┐")
+		visibleTabs = append(visibleTabs, "\n\n"+strings.Repeat("─", (pad))+"┐")
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, visibleTabs...)

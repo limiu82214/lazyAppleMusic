@@ -27,7 +27,7 @@ type PlayerBridge interface {
 	IncreaseVolume() tea.Cmd
 	DecreaseVolume() tea.Cmd
 	PlayPlaylist(playlistName string) tea.Cmd
-	PlayTrackByName(trackName string) tea.Cmd
+	PlayTrackById(id string) tea.Cmd
 	FavoriteCurrentTrack() tea.Cmd
 	FavoriteTrackByTrackId(id string) tea.Cmd
 
@@ -230,14 +230,36 @@ func (a *appleMusicBridge) PlayPlaylist(playlistName string) tea.Cmd {
 	}
 }
 
-func (a *appleMusicBridge) PlayTrackByName(trackName string) tea.Cmd {
+func (a *appleMusicBridge) PlayTrackById(id string) tea.Cmd {
 	return func() tea.Msg {
-		cmd := exec.Command("osascript", "-e", fmt.Sprintf(`tell application "%s" to play track "%s"`, a.appName, trackName))
+		script := fmt.Sprintf(`set targetID to "%s"
+			set foundTrack to missing value
+			tell application "%s"
+				repeat with p in every playlist
+					try
+						set foundTrack to (first track of p whose persistent ID is targetID)
+						if foundTrack is not missing value then
+							exit repeat
+						end if
+					end try
+				end repeat
+
+				if foundTrack is not missing value then
+					play foundTrack
+					return "播放「" & (get name of foundTrack) & "」！"
+				else
+					return "錯誤：找不到 persistent ID 為 " & targetID & " 的歌曲。"
+				end if
+			end tell`, id, a.appName)
+
+		cmd := exec.Command("osascript", "-e", script)
+
 		if err := cmd.Run(); err != nil {
-			a.log(fmt.Sprintf("Error playing track '%s': %v", trackName, err.Error()))
+			a.log(fmt.Sprintf("Error play track byid: %v", err))
 			return err
 		}
-		return nil
+
+		return constant.EventTrackChanged{}
 	}
 }
 

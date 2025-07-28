@@ -16,7 +16,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-var currentPlaylistDebug = false
+var currentPlaylistDebug = true
 
 type CurrentPlaylistTui interface {
 	tea.Model
@@ -92,7 +92,11 @@ func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "f":
 			track := m.list.SelectedItem().(model.Track)
 			return m, util.ToTeaCmdMsg(constant.ShouldFavoriteTrackId(track.Id))
+		case "g":
+			track := m.list.SelectedItem().(model.Track)
+			return m, util.ToTeaCmdMsg(constant.ShouldPlayTrackId(track.Id))
 		}
+
 	case constant.EventFavoriteTrackId:
 		items := m.list.Items()
 		index := -1

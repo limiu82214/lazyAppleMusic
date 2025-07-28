@@ -116,6 +116,9 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case constant.ShouldFavoriteTrackId:
 		spew.Fprintln(m.dump, "Top ShouldFavoriteTrack:", util.JsonMarshalWhatever(msg))
 		return m, m.appleMusic.FavoriteTrackByTrackId(string(msg))
+	case constant.ShouldPlayTrackId:
+		spew.Fprintln(m.dump, "Top ShouldPlayTrackId:", util.JsonMarshalWhatever(msg))
+		return m, m.appleMusic.PlayTrackById(string(msg))
 
 	case constant.EventFavoriteTrackId:
 		spew.Fprintln(m.dump, "Top EventFavoriteTrackId:", util.JsonMarshalWhatever(msg))
@@ -183,6 +186,10 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds := m.fetchData()
 			return m, tea.Batch(cmds...)
 		case "f":
+			tt, cmd := m.tabTui.Update(msg)
+			m.tabTui, _ = tt.(TabTui)
+			return m, cmd
+		case "g":
 			tt, cmd := m.tabTui.Update(msg)
 			m.tabTui, _ = tt.(TabTui)
 			return m, cmd

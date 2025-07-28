@@ -31,12 +31,15 @@ func newHelpTui(dump io.Writer) HelpTui {
 			"b: previous, " +
 			"u: volume up, " +
 			"d: volume down, " +
-			"h: list prev page,j" +
+			"h: list prev page," +
 			"l: list next page, " +
 			"j: list cursor down, " +
 			"k: list cursor up, " +
 			"f: favorite selected track, " +
 			"F: favorite current track, " +
+			"g: play selected track, " +
+			"<: prev list, " +
+			">: next list, " +
 			"r: refresh, " +
 			"q: quit",
 	}

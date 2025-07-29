@@ -26,7 +26,6 @@ func newHelpTui(dump io.Writer) HelpTui {
 		dump:  dump,
 		style: lipgloss.NewStyle().Align(lipgloss.Center),
 		content: "p: play/pause, " +
-			"s: pause, " +
 			"n: next, " +
 			"b: previous, " +
 			"u: volume up, " +
@@ -35,6 +34,7 @@ func newHelpTui(dump io.Writer) HelpTui {
 			"l: list next page, " +
 			"j: list cursor down, " +
 			"k: list cursor up, " +
+			"s: select current track, " +
 			"f: favorite selected track, " +
 			"F: favorite current track, " +
 			"g: play selected track, " +

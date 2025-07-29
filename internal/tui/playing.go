@@ -20,6 +20,7 @@ type PlayingTui interface {
 	tea.Model
 	Width(width int) PlayingTui
 	Height(height int) PlayingTui
+	GetCurrentTrack() model.Track
 }
 
 type playingTui struct {
@@ -123,4 +124,7 @@ func (m *playingTui) Width(width int) PlayingTui {
 func (m *playingTui) Height(height int) PlayingTui {
 	m.style = m.style.Height(height)
 	return m
+}
+func (m playingTui) GetCurrentTrack() model.Track {
+	return m.track
 }

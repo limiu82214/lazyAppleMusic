@@ -80,6 +80,16 @@ func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	switch msg := msg.(type) {
+
+	case constant.ShouldSelectTrackId:
+		for i, item := range m.list.Items() {
+			if track, ok := item.(model.Track); ok {
+				if track.Id == string(msg) {
+					m.list.Select(i)
+					break
+				}
+			}
+		}
 	case constant.EventUpdateCurrentPlaylist:
 		currentPlaylist := model.Playlist(msg)
 		items := make([]list.Item, len(currentPlaylist.Tracks))

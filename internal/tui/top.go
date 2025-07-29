@@ -122,13 +122,19 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-
 	case constant.ShouldFavoriteTrackId:
 		spew.Fprintln(m.dump, "Top ShouldFavoriteTrack:", util.JsonMarshalWhatever(msg))
 		return m, m.appleMusic.FavoriteTrackByTrackId(string(msg))
 	case constant.ShouldPlayTrackId:
 		spew.Fprintln(m.dump, "Top ShouldPlayTrackId:", util.JsonMarshalWhatever(msg))
 		return m, m.appleMusic.PlayTrackById(string(msg))
+
+	case constant.ShouldSelectTrackId:
+		spew.Fprintln(m.dump, "Top ShouldSelectTrackId:", util.JsonMarshalWhatever(msg))
+		tt, cmd := m.tabTui.Update(msg)
+		cmds = append(cmds, cmd)
+		m.tabTui, _ = tt.(TabTui)
+		return m, tea.Batch(cmds...)
 
 	case constant.EventFavoriteTrackId:
 		spew.Fprintln(m.dump, "Top EventFavoriteTrackId:", util.JsonMarshalWhatever(msg))
@@ -196,8 +202,6 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.appleMusic.NextTrack()
 			case "b":
 				return m, m.appleMusic.PreviousTrack()
-			case "s":
-				return m, tea.Batch(m.appleMusic.Pause())
 			case "u":
 				return m, m.appleMusic.IncreaseVolume()
 			case "d":
@@ -240,6 +244,8 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.tabTui.NextPage()
 			case "<":
 				m.tabTui.PrevPage()
+			case "s":
+				return m, util.ToTeaCmdMsg(constant.ShouldSelectTrackId(m.playingTui.GetCurrentTrack().Id))
 			}
 		default:
 			spew.Fprintln(m.dump, "Top unknown case:", util.JsonMarshalWhatever(msg))

@@ -14,16 +14,16 @@ flowchart TD
 
 ## BUG
 
--   remain time sync
+- remain time sync
 
 ## TODO
 
--   [x] direct play current select track
--   [ ] quick find current track in playlist
--   [ ] toggle random play
--   [ ] toggle repeat play
--   [ ] add user's playlist
--   [ ] search current playlist with input
+- [x] direct play current select track
+- [ ] quick find current track in playlist
+- [ ] toggle random play
+- [ ] toggle repeat play
+- [ ] add user's playlist
+- [x] search current playlist with input
 
 ## Maybe TODO
 

@@ -16,7 +16,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-var currentPlaylistDebug = true
+var currentPlaylistDebug = false
 
 type CurrentPlaylistTui interface {
 	tea.Model
@@ -24,6 +24,8 @@ type CurrentPlaylistTui interface {
 	SetHeight(height int) CurrentPlaylistTui
 	Width() int
 	Height() int
+	IsFiltering() bool
+	IsUnFiltered() bool
 }
 
 type currentPlaylistTui struct {
@@ -71,6 +73,12 @@ func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		spew.Fprintln(m.dump, "currentplaylist: ", msg)
 	}
 
+	if m.list.FilterState() == list.Filtering {
+		spew.Fprintln(m.dump, "currentplaylist: filtering enabled, update list")
+		var cmd tea.Cmd
+		m.list, cmd = m.list.Update(msg)
+		return m, cmd
+	}
 	switch msg := msg.(type) {
 	case constant.EventUpdateCurrentPlaylist:
 		currentPlaylist := model.Playlist(msg)
@@ -95,6 +103,17 @@ func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "g":
 			track := m.list.SelectedItem().(model.Track)
 			return m, util.ToTeaCmdMsg(constant.ShouldPlayTrackId(track.Id))
+
+		case "/":
+			spew.Fprintln(m.dump, "currentplaylist: show filter", m.list.ShowFilter(), m.list.FilteringEnabled(), m.list.ShowStatusBar())
+			// 開啟 filter
+			// m.list.SetShowFilter(true)
+			m.list.SetFilteringEnabled(true)
+			m.list.SetShowStatusBar(true)
+			// m.list.SetShowHelp(true)
+			var cmd tea.Cmd
+			m.list, cmd = m.list.Update(msg)
+			return m, cmd
 		}
 
 	case constant.EventFavoriteTrackId:
@@ -112,6 +131,10 @@ func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			tmp.Favorited = !tmp.Favorited
 			m.list.SetItem(index, tmp)
 		}
+	default:
+		var cmd tea.Cmd
+		m.list, cmd = m.list.Update(msg)
+		return m, cmd
 	}
 
 	return m, nil
@@ -134,6 +157,13 @@ func (m currentPlaylistTui) Width() int {
 }
 func (m currentPlaylistTui) Height() int {
 	return m.style.GetHeight()
+}
+
+func (m currentPlaylistTui) IsFiltering() bool {
+	return m.list.FilterState() == list.Filtering
+}
+func (m currentPlaylistTui) IsUnFiltered() bool {
+	return m.list.FilterState() == list.Unfiltered
 }
 
 type currentPlayListDelegate struct{}

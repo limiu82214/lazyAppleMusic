@@ -20,6 +20,7 @@ type TabTui interface {
 	PrevPage() TabTui
 	SetHeight(height int) TabTui
 	SetWidth(width int) TabTui
+	GetContent(tabName string) tea.Model
 }
 type tabTui struct {
 	dump io.Writer
@@ -149,6 +150,16 @@ func (m *tabTui) PrevPage() TabTui {
 		m.ActiveTab--
 	}
 	return m
+}
+
+func (m *tabTui) GetContent(tabName string) tea.Model {
+	for i, tab := range m.Tabs {
+		if tab == tabName {
+			return m.TabContent[i]
+		}
+	}
+
+	return nil
 }
 
 func (m *tabTui) renderTabs() string {

@@ -14,6 +14,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
+const currentPlaylistTabName = "Current Play List"
+
 type topTui struct {
 	dump       io.Writer
 	appleMusic bridge.PlayerBridge
@@ -32,7 +34,7 @@ func InitialTopTui(dump io.Writer) topTui {
 		appleMusic: appleMusic,
 
 		playingTui: newPlayingTui(dump, appleMusic),
-		tabTui: newTabTui(dump, []string{"Current Play List",
+		tabTui: newTabTui(dump, []string{currentPlaylistTabName,
 			"Not Implemented Yet",
 		}, []tea.Model{
 			newCurrentPlaylistTui(dump, appleMusic),
@@ -88,6 +90,7 @@ func (m topTui) View() string {
 
 func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := []tea.Cmd{}
+
 	switch msg := msg.(type) {
 	case constant.EventUpdateTrackData:
 		spew.Fprintln(m.dump, "Top EventUpdateTrackData:", util.JsonMarshalWhatever(msg))
@@ -108,10 +111,17 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, cmd
 	case constant.EventUpdateCurrentPlaylist:
-		// spew.Fprintln(m.dump, "Top EventUpdateCurrentPlaylist:", util.JsonMarshalWhatever(msg))
-		tt, cmd := m.tabTui.Update(msg)
-		m.tabTui, _ = tt.(TabTui)
-		return m, cmd
+		cp := m.tabTui.GetContent(currentPlaylistTabName)
+		if cp != nil {
+			if currentPlaylist, ok := cp.(CurrentPlaylistTui); ok {
+				if currentPlaylist.IsUnFiltered() {
+					spew.Fprintln(m.dump, "Top EventUpdateCurrentPlaylist:", util.JsonMarshalWhatever(msg))
+					tt, cmd := m.tabTui.Update(msg)
+					m.tabTui, _ = tt.(TabTui)
+					return m, cmd
+				}
+			}
+		}
 
 	case constant.ShouldFavoriteTrackId:
 		spew.Fprintln(m.dump, "Top ShouldFavoriteTrack:", util.JsonMarshalWhatever(msg))
@@ -163,61 +173,77 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds := m.fetchData()
 		return m, tea.Batch(cmds...)
 
-	case tea.KeyMsg:
-		spew.Fprintln(m.dump, "Top KeyMsg:", util.JsonMarshalWhatever(msg))
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "p":
-			return m, m.appleMusic.PlayPause()
-		case "n":
-			return m, m.appleMusic.NextTrack()
-		case "b":
-			return m, m.appleMusic.PreviousTrack()
-		case "s":
-			return m, tea.Batch(m.appleMusic.Pause())
-		case "u":
-			return m, m.appleMusic.IncreaseVolume()
-		case "d":
-			return m, m.appleMusic.DecreaseVolume()
-		case "F":
-			return m, m.appleMusic.FavoriteCurrentTrack()
-		case "r":
-			cmds := m.fetchData()
-			return m, tea.Batch(cmds...)
-		case "f":
-			tt, cmd := m.tabTui.Update(msg)
-			m.tabTui, _ = tt.(TabTui)
-			return m, cmd
-		case "g":
-			tt, cmd := m.tabTui.Update(msg)
-			m.tabTui, _ = tt.(TabTui)
-			return m, cmd
-		case "k":
-			tt, cmd := m.tabTui.Update(msg)
-			m.tabTui, _ = tt.(TabTui)
-			return m, cmd
-		case "j":
-			tt, cmd := m.tabTui.Update(msg)
-			m.tabTui, _ = tt.(TabTui)
-			return m, cmd
-		case "h":
-			tt, cmd := m.tabTui.Update(msg)
-			m.tabTui, _ = tt.(TabTui)
-			return m, cmd
-		case "l":
-			tt, cmd := m.tabTui.Update(msg)
-			m.tabTui, _ = tt.(TabTui)
-			return m, cmd
-
-		case ">":
-			m.tabTui.NextPage()
-		case "<":
-			m.tabTui.PrevPage()
-
-		}
 	default:
-		spew.Fprintln(m.dump, "Top unknown case:", util.JsonMarshalWhatever(msg))
+		cp := m.tabTui.GetContent(currentPlaylistTabName)
+		if cp != nil {
+			if currentPlaylist, ok := cp.(CurrentPlaylistTui); ok {
+				if currentPlaylist.IsFiltering() {
+					spew.Fprintln(m.dump, "Top KeyMsg: currentPlaylist is filtering, passing to currentPlaylist")
+					_, cmd := currentPlaylist.Update(msg)
+					return m, cmd
+				}
+			}
+		}
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			spew.Fprintln(m.dump, "Top KeyMsg:", util.JsonMarshalWhatever(msg))
+			switch msg.String() {
+			case "ctrl+c", "q":
+				return m, tea.Quit
+			case "p":
+				return m, m.appleMusic.PlayPause()
+			case "n":
+				return m, m.appleMusic.NextTrack()
+			case "b":
+				return m, m.appleMusic.PreviousTrack()
+			case "s":
+				return m, tea.Batch(m.appleMusic.Pause())
+			case "u":
+				return m, m.appleMusic.IncreaseVolume()
+			case "d":
+				return m, m.appleMusic.DecreaseVolume()
+			case "F":
+				return m, m.appleMusic.FavoriteCurrentTrack()
+			case "r":
+				cmds := m.fetchData()
+				return m, tea.Batch(cmds...)
+			case "f":
+				tt, cmd := m.tabTui.Update(msg)
+				m.tabTui, _ = tt.(TabTui)
+				return m, cmd
+			case "g":
+				tt, cmd := m.tabTui.Update(msg)
+				m.tabTui, _ = tt.(TabTui)
+				return m, cmd
+			case "k":
+				tt, cmd := m.tabTui.Update(msg)
+				m.tabTui, _ = tt.(TabTui)
+				return m, cmd
+			case "j":
+				tt, cmd := m.tabTui.Update(msg)
+				m.tabTui, _ = tt.(TabTui)
+				return m, cmd
+			case "h":
+				tt, cmd := m.tabTui.Update(msg)
+				m.tabTui, _ = tt.(TabTui)
+				return m, cmd
+			case "l":
+				tt, cmd := m.tabTui.Update(msg)
+				m.tabTui, _ = tt.(TabTui)
+				return m, cmd
+			case "/":
+				tt, cmd := m.tabTui.Update(msg)
+				m.tabTui, _ = tt.(TabTui)
+				return m, cmd
+
+			case ">":
+				m.tabTui.NextPage()
+			case "<":
+				m.tabTui.PrevPage()
+			}
+		default:
+			spew.Fprintln(m.dump, "Top unknown case:", util.JsonMarshalWhatever(msg))
+		}
 	}
 
 	return m, nil

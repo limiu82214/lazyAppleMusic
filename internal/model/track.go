@@ -16,3 +16,5 @@ type Track struct {
 func (t Track) FilterValue() string {
 	return t.Name + " " + t.Artist
 }
+
+func (t Track) Description() string { return t.Name}

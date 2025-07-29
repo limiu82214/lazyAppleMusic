@@ -38,6 +38,8 @@ func newHelpTui(dump io.Writer) HelpTui {
 			"f: favorite selected track, " +
 			"F: favorite current track, " +
 			"g: play selected track, " +
+			"/: filter tracks, " +
+			"<esc>: clear filter, " +
 			"<: prev list, " +
 			">: next list, " +
 			"r: refresh, " +

@@ -29,6 +29,7 @@ type ShouldFavoriteTrackId string
 type ShouldUpdateTabs model.TabTuiData
 type ShouldPlayTrackId string
 type ShouldSelectTrackId string
+type ShouldClearFilter struct{}
 
 
 const (

@@ -90,6 +90,8 @@ func (m *currentPlaylistTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case constant.ShouldClearFilter:
+		m.list.ResetFilter()
 	case constant.EventUpdateCurrentPlaylist:
 		currentPlaylist := model.Playlist(msg)
 		items := make([]list.Item, len(currentPlaylist.Tracks))

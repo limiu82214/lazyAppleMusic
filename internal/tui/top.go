@@ -15,6 +15,7 @@ import (
 )
 
 const currentPlaylistTabName = "Current Play List"
+var globalDump io.Writer
 
 type topTui struct {
 	dump       io.Writer
@@ -28,6 +29,7 @@ type topTui struct {
 }
 
 func InitialTopTui(dump io.Writer) topTui {
+	globalDump = dump
 	appleMusic := bridge.NewAppleMusicBridge(dump)
 	return topTui{
 		dump:       dump,
@@ -128,7 +130,12 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case constant.ShouldPlayTrackId:
 		spew.Fprintln(m.dump, "Top ShouldPlayTrackId:", util.JsonMarshalWhatever(msg))
 		return m, m.appleMusic.PlayTrackById(string(msg))
-
+	case constant.ShouldClearFilter:
+		spew.Fprintln(m.dump, "Top ShouldClearFilter:", util.JsonMarshalWhatever(msg))
+		tt, cmd := m.tabTui.Update(msg)
+		cmds = append(cmds, cmd)
+		m.tabTui, _ = tt.(TabTui)
+		return m, tea.Batch(cmds...)
 	case constant.ShouldSelectTrackId:
 		spew.Fprintln(m.dump, "Top ShouldSelectTrackId:", util.JsonMarshalWhatever(msg))
 		tt, cmd := m.tabTui.Update(msg)
@@ -239,7 +246,8 @@ func (m topTui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				tt, cmd := m.tabTui.Update(msg)
 				m.tabTui, _ = tt.(TabTui)
 				return m, cmd
-
+			case tea.KeyEscape.String():
+				return m, util.ToTeaCmdMsg(constant.ShouldClearFilter{})
 			case ">":
 				m.tabTui.NextPage()
 			case "<":

@@ -19,7 +19,7 @@ flowchart TD
 ## TODO
 
 - [x] direct play current select track
-- [ ] quick find current track in playlist
+- [x] quick find current track in playlist
 - [ ] toggle random play
 - [ ] toggle repeat play
 - [ ] add user's playlist

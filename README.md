@@ -15,6 +15,7 @@ flowchart TD
 ## BUG
 
 - remain time sync
+- `g` will change current playlist
 
 ## TODO
 

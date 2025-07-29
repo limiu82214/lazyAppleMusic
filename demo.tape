@@ -17,10 +17,6 @@ Sleep 5
 Show
 
 Set TypingSpeed 0.5
-Type n
-Sleep 2
-Type n
-Sleep 2
 Type j
 Type j
 Type f
@@ -28,7 +24,8 @@ Type j
 Type f
 Sleep 1
 Type f
-Type j
+Type g
+Sleep 2
 Type j
 Type ">"
 Sleep 2
@@ -41,3 +38,12 @@ Type k
 Type k
 Type k
 Type h
+
+Type '/'
+Type 'lett'
+Enter
+Type g
+Sleep 2
+Type f
+Type `VAR="Escaped"`
+

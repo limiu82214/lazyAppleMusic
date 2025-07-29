@@ -15,7 +15,7 @@ flowchart TD
 ## BUG
 
 - remain time sync
-- `g` will change current playlist
+- `g` will change current playlist (when the track be founded in other playlist)
 
 ## TODO
 
@@ -25,13 +25,17 @@ flowchart TD
 - [ ] toggle repeat play
 - [ ] add user's playlist
 - [x] search current playlist with input
+- [ ] play whole playlist
+
 
 ## Maybe TODO
 
--   cache album, playlist...
--   add dev flow
--   add to `brew`
--   add to `awesome-tui`
+- cache album, playlist...
+- add dev flow
+- add to `brew`
+- add to `awesome-tui`
+- multiselection and play
+- add track to play later
 
 ## Thank this article help me build this project
 
